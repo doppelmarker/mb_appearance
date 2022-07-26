@@ -34,7 +34,3 @@ def main():
 
     if generate:
         generate_n_random_characters(generate)
-
-
-if __name__ == '__main__':
-    main()

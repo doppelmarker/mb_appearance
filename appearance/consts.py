@@ -19,7 +19,7 @@ PROFILES_DIR_PATH = get_profiles_dir_path()
 PROFILES_FILE_NAME = 'profiles.dat'
 PROFILES_FILE_PATH = Path(PROFILES_DIR_PATH, PROFILES_FILE_NAME)
 
-RESOURCES_FILE_DIR = Path('../resources')
+RESOURCES_FILE_DIR = Path(Path(__file__).parent, '../resources')
 HEADER_FILE_PATH = Path(RESOURCES_FILE_DIR, 'header.dat')
 COMMON_CHAR_FILE_PATH = Path(RESOURCES_FILE_DIR, 'common_char.dat')
 
