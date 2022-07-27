@@ -1,3 +1,3 @@
 include requirements.txt
 recursive-include resources *
-recursive-exclude resources/backups *
+recursive-exclude resources/backups *.dat
