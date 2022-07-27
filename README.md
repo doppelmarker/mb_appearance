@@ -3,7 +3,7 @@ Small Python program to manipulate Mount &amp; Blade character appearance.
 
     usage: mb-app [-h] [-v] [--verbose] [-b BACKUP_TO] [-r RESTORE_FROM] [-g N]
 
-    Python util for Mount&Blade characters file processing.
+    Python util for Mount&Blade characters file manipulation.
     
     optional arguments:
     -h, --help                               Show this help message and exit.

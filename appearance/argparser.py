@@ -8,7 +8,7 @@ class ArgParser:
     def __init__(self):
         self.parser = argparse.ArgumentParser(
             prog="mb-app",
-            description="Python util for Mount&Blade characters file processing.",
+            description="Python util for Mount&Blade characters file manipulation.",
             formatter_class=lambda prog: argparse.HelpFormatter(
                 prog, max_help_position=48
             ),
