@@ -14,6 +14,12 @@ def backup(backup_to_filename: str):
     print(f'Successfully made backup to {backup_path.resolve()}!')
 
 
+def show_backuped_characters(backup_dir_path: Path):
+    print("Available backups:")
+    for idx, file in enumerate(Path(backup_dir_path).glob("*.dat"), start=1):
+        print(f"{idx}. {file.name.split('.')[0]}")
+
+
 def restore_from_backup(restore_dir_path: Path, restore_from_filename: str):
     restore_path = Path(restore_dir_path, restore_from_filename)
     profiles = read_profiles(restore_path)

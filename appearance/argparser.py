@@ -38,6 +38,12 @@ class ArgParser:
             metavar="BACKUP_TO"
         )
         self.parser.add_argument(
+            "-s",
+            "--show",
+            help="Show backuped characters.",
+            action='store_true'
+        )
+        self.parser.add_argument(
             "-r",
             "--restore",
             help="Restore characters file from backup.",
