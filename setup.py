@@ -10,7 +10,7 @@ def read(file_name):
 
 setup(
     name="mb-app",
-    version="0.0.6",
+    version="0.0.7",
     author="doppelmarker",
     author_email="doppelmarker@gmail.com",
     url="https://github.com/doppelmarker/mb_appearance",

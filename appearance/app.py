@@ -2,7 +2,7 @@ from pathlib import Path
 
 from appearance.argparser import ArgParser
 from appearance.consts import BACKUP_FILE_DIR, RESOURCES_FILE_DIR
-from appearance.service import backup, restore_from_backup, generate_n_random_characters
+from appearance.service import backup, restore_from_backup, generate_n_random_characters, show_backuped_characters
 from appearance.validators import validate_file_exists
 
 
@@ -11,11 +11,15 @@ def main():
     cli_args = arg_parser.args
 
     backup_to: str = cli_args.backup
+    show_backups: bool = cli_args.show
     restore_from: str = cli_args.restore
     generate: int = cli_args.gen
 
-    if not (backup_to or restore_from or generate):
+    if not (backup_to or restore_from or generate or show_backups):
         arg_parser.parser.error('No action requested!')
+
+    if show_backups:
+        show_backuped_characters(BACKUP_FILE_DIR)
 
     if backup_to:
         if not backup_to.endswith('.dat'):
