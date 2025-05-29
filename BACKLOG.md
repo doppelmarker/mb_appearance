@@ -58,7 +58,31 @@ This backlog follows Claude Code best practices for task planning and project im
 - Version management automated
 - Package metadata complete
 
-## 3. GitHub Workflow Setup
+## 3. Add Makefile
+**Priority: Medium**
+**Goal: Standardize development commands and simplify workflow**
+
+### Tasks:
+- [ ] Create `Makefile` with common commands:
+  - [ ] `make install` - Install package in development mode
+  - [ ] `make test` - Run test suite
+  - [ ] `make coverage` - Run tests with coverage report
+  - [ ] `make lint` - Run linting tools (ruff, black, isort)
+  - [ ] `make format` - Auto-format code
+  - [ ] `make typecheck` - Run mypy type checking
+  - [ ] `make build` - Build distribution packages
+  - [ ] `make clean` - Clean build artifacts
+  - [ ] `make release` - Tag and prepare release
+- [ ] Add help target with command descriptions
+- [ ] Document Makefile usage in README
+
+### Acceptance Criteria:
+- All common dev tasks have make commands
+- Works cross-platform (with make installed)
+- Self-documenting with `make help`
+- GitHub workflows use Makefile commands
+
+## 4. GitHub Workflow Setup
 **Priority: Medium**
 **Goal: Automate testing, linting, and deployment**
 
@@ -69,13 +93,14 @@ This backlog follows Claude Code best practices for task planning and project im
   - [ ] Test matrix (Python 3.8-3.12)
   - [ ] OS matrix (ubuntu, windows, macos)
   - [ ] Coverage reporting to PR
+  - [ ] Use Makefile commands (e.g., `make test`)
 - [ ] Add `lint.yml` workflow:
-  - [ ] Run ruff/black/isort
-  - [ ] Type checking with mypy
+  - [ ] Run ruff/black/isort via `make lint`
+  - [ ] Type checking with mypy via `make typecheck`
   - [ ] Security checks with bandit
 - [ ] Add `release.yml` workflow:
   - [ ] Trigger on version tags
-  - [ ] Build wheel and sdist
+  - [ ] Build wheel and sdist via `make build`
   - [ ] Upload to PyPI
   - [ ] Create GitHub release
 - [ ] Add status badges to README
@@ -85,8 +110,9 @@ This backlog follows Claude Code best practices for task planning and project im
 - Automated PyPI deployment working
 - PR checks enforced
 - Version bumping automated
+- Workflows use Makefile commands for consistency
 
-## 4. Pre-commit Hooks
+## 5. Pre-commit Hooks
 **Priority: Low**
 **Goal: Ensure code quality before commits**
 
@@ -121,6 +147,7 @@ This backlog follows Claude Code best practices for task planning and project im
    - Package modernization
 
 3. **Phase 3 - Automation** (Week 3)
+   - Add Makefile
    - Pre-commit hooks
    - GitHub workflows
    - CI/CD pipeline
