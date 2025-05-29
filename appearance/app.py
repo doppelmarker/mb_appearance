@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 from appearance.argparser import ArgParser
@@ -9,6 +10,19 @@ from appearance.validators import validate_file_exists
 def main():
     arg_parser = ArgParser()
     cli_args = arg_parser.args
+
+    # Configure logging based on CLI flags
+    if cli_args.quiet:
+        log_level = logging.ERROR
+    elif cli_args.verbose:
+        log_level = logging.DEBUG
+    else:
+        log_level = logging.INFO
+    
+    logging.basicConfig(
+        level=log_level,
+        format='%(levelname)s: %(message)s'
+    )
 
     backup_to: str = cli_args.backup
     show_backups: bool = cli_args.show

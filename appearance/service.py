@@ -1,3 +1,4 @@
+import logging
 import string
 from pathlib import Path
 
@@ -6,19 +7,21 @@ from appearance.consts import get_profiles_file_path, BACKUP_FILE_DIR, HEADER_FI
 from appearance.helpers import read_profiles, write_profiles, \
     get_header_with_chars_amount, get_random_byte_for_idx, get_random_sex, get_random_skin
 
+logger = logging.getLogger(__name__)
+
 
 def backup(backup_to_filename: str, wse2: bool = False):
     profiles_file_path = get_profiles_file_path(wse2)
     profiles = read_profiles(profiles_file_path)
     backup_path = Path(BACKUP_FILE_DIR, backup_to_filename)
     write_profiles(backup_path, profiles)
-    print(f'Successfully made backup to {backup_path.resolve()}!')
+    logger.info('Successfully made backup to %s!', backup_path.resolve())
 
 
 def show_backuped_characters(backup_dir_path: Path):
-    print("Available backups:")
+    logger.info("Available backups:")
     for idx, file in enumerate(Path(backup_dir_path).glob("*.dat"), start=1):
-        print(f"{idx}. {file.name.split('.')[0]}")
+        logger.info("%d. %s", idx, file.name.split('.')[0])
 
 
 def restore_from_backup(restore_dir_path: Path, restore_from_filename: str, wse2: bool = False):
@@ -26,7 +29,7 @@ def restore_from_backup(restore_dir_path: Path, restore_from_filename: str, wse2
     profiles = read_profiles(restore_path)
     profiles_file_path = get_profiles_file_path(wse2)
     write_profiles(profiles_file_path, profiles)
-    print(f'Successfully restored from backup located at {restore_path.resolve()}!')
+    logger.info('Successfully restored from backup located at %s!', restore_path.resolve())
 
 
 def generate_n_random_characters(n: int, wse2: bool = False):
@@ -56,4 +59,4 @@ def generate_n_random_characters(n: int, wse2: bool = False):
 
     profiles_file_path = get_profiles_file_path(wse2)
     write_profiles(profiles_file_path, header)
-    print(f'Successfully generated {n} random characters!')
+    logger.info('Successfully generated %d random characters!', n)

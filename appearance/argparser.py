@@ -32,6 +32,9 @@ class ArgParser:
             "--verbose", help="Output verbose status messages.", action="store_true"
         )
         self.parser.add_argument(
+            "--quiet", help="Suppress all output except errors.", action="store_true"
+        )
+        self.parser.add_argument(
             "-b",
             "--backup",
             help="Backup characters file.",
