@@ -56,6 +56,11 @@ class ArgParser:
             metavar='N',
             type=int
         )
+        self.parser.add_argument(
+            "--wse2",
+            help="Use WSE2 (Warband Script Enhancer 2) profiles directory.",
+            action='store_true'
+        )
 
     @property
     def args(self) -> argparse.Namespace:

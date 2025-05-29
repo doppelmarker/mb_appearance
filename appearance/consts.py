@@ -3,9 +3,9 @@ import sys
 from pathlib import Path
 
 
-def get_profiles_dir_path() -> Path:
+def get_profiles_dir_path(wse2: bool = False) -> Path:
     home = Path.home()
-    mb_dir_name = "Mount&Blade Warband"
+    mb_dir_name = "Mount&Blade Warband WSE2" if wse2 else "Mount&Blade Warband"
 
     if sys.platform == "win32":
         return home / "AppData/Roaming" / mb_dir_name
@@ -13,6 +13,10 @@ def get_profiles_dir_path() -> Path:
         return home / ".local/share" / mb_dir_name
     elif sys.platform == "darwin":
         return home / "Library/Application Support" / mb_dir_name
+
+
+def get_profiles_file_path(wse2: bool = False) -> Path:
+    return get_profiles_dir_path(wse2) / PROFILES_FILE_NAME
 
 
 PROFILES_DIR_PATH = get_profiles_dir_path()

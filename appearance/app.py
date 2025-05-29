@@ -14,6 +14,7 @@ def main():
     show_backups: bool = cli_args.show
     restore_from: str = cli_args.restore
     generate: int = cli_args.gen
+    wse2: bool = cli_args.wse2
 
     if not (backup_to or restore_from or generate or show_backups):
         arg_parser.parser.error('No action requested!')
@@ -24,17 +25,17 @@ def main():
     if backup_to:
         if not backup_to.endswith('.dat'):
             backup_to = backup_to.split('.')[0] + '.dat'
-        backup(backup_to)
+        backup(backup_to, wse2)
 
     if restore_from:
         if not restore_from.endswith('.dat'):
             restore_from = restore_from.split('.')[0] + '.dat'
         if validate_file_exists(Path(BACKUP_FILE_DIR, restore_from)):
-            restore_from_backup(BACKUP_FILE_DIR, restore_from)
+            restore_from_backup(BACKUP_FILE_DIR, restore_from, wse2)
         elif validate_file_exists(Path(RESOURCES_FILE_DIR, restore_from)):
-            restore_from_backup(RESOURCES_FILE_DIR, restore_from)
+            restore_from_backup(RESOURCES_FILE_DIR, restore_from, wse2)
         else:
             arg_parser.parser.error('Malformed restore path!')
 
     if generate:
-        generate_n_random_characters(generate)
+        generate_n_random_characters(generate, wse2)
