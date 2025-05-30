@@ -81,6 +81,40 @@ class TestBackup(unittest.TestCase):
 3. Keep functions pure where possible
 4. Separate I/O operations from business logic
 
+## Version Management
+
+### Bumping Version
+Use the `bump_version.py` script to update version:
+
+```bash
+# Patch version (bug fixes): 0.0.7 → 0.0.8
+python bump_version.py patch
+
+# Minor version (new features): 0.0.7 → 0.1.0
+python bump_version.py minor
+
+# Major version (breaking changes): 0.0.7 → 1.0.0
+python bump_version.py major
+
+# Skip git operations (for testing)
+python bump_version.py patch --no-git
+
+# Skip CHANGELOG update
+python bump_version.py patch --no-changelog
+```
+
+The script will:
+1. Update `appearance/__version__.py`
+2. Update `CHANGELOG.md` with new version section
+3. Create git commit and tag
+4. Provide next steps for release
+
+### Version Guidelines
+- **Patch**: Bug fixes, documentation updates, minor improvements
+- **Minor**: New features, non-breaking enhancements
+- **Major**: Breaking changes, major refactoring
+- Stay in 0.x.x until API is stable
+
 ## Commit Guidelines
 
 When Claude generates commits, use the following format:

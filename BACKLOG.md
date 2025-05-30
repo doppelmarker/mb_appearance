@@ -111,7 +111,39 @@ This backlog follows Claude Code best practices for task planning and project im
 - Version bumping automated
 - Workflows use Makefile commands for consistency
 
-## 5. Pre-commit Hooks
+## 5. Character Deletion Feature
+**Priority: Medium**
+**Goal: Add ability to delete characters from profiles.dat**
+
+### Tasks:
+- [ ] Add `--delete` flag to argparser:
+  - [ ] Support no arguments (delete all characters)
+  - [ ] Support character name arguments (delete specific characters)
+  - [ ] Add confirmation prompt for safety
+- [ ] Implement deletion logic in `service.py`:
+  - [ ] `delete_all_characters()` - Remove all characters from profiles
+  - [ ] `delete_characters_by_name(names)` - Remove specific characters
+  - [ ] Preserve file structure integrity after deletion
+- [ ] Add helper functions in `helpers.py`:
+  - [ ] Parse character blocks from profiles
+  - [ ] Rebuild profiles after deletion
+  - [ ] Update header with new character count
+- [ ] Add comprehensive tests:
+  - [ ] Test delete all functionality
+  - [ ] Test selective deletion by name
+  - [ ] Test edge cases (non-existent names, empty file)
+- [ ] Update documentation:
+  - [ ] Add usage examples to README
+  - [ ] Document safety considerations
+
+### Acceptance Criteria:
+- Characters can be deleted safely
+- File integrity maintained after deletion
+- Confirmation required for destructive operations
+- Comprehensive error handling
+- Feature well-documented
+
+## 6. Pre-commit Hooks
 **Priority: Low**
 **Goal: Ensure code quality before commits**
 
