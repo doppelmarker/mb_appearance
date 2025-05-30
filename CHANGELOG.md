@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+## [0.1.0] - 2025-05-30
+
+
+### Added
 - Centralized version management in `appearance/__version__.py`
 - Character deletion feature (planned) - see BACKLOG.md
 
@@ -77,7 +86,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Automatic Mount & Blade directory detection
 - Binary file manipulation for character appearance
 
-[Unreleased]: https://github.com/doppelmarker/mb_appearance/compare/v0.0.7...HEAD
+[Unreleased]: https://github.com/doppelmarker/mb_appearance/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/doppelmarker/mb_appearance/compare/v0.0.7...v0.1.0
 [0.0.7]: https://github.com/doppelmarker/mb_appearance/compare/v0.0.6...v0.0.7
 [0.0.6]: https://github.com/doppelmarker/mb_appearance/compare/v0.0.5...v0.0.6
 [0.0.5]: https://github.com/doppelmarker/mb_appearance/compare/v0.0.4...v0.0.5
