@@ -4,13 +4,13 @@ from appearance.consts import ALLOWED_NAME_CHARS
 
 
 def validate_file_exists(filepath: Path) -> bool:
-    return True if filepath.is_file() else False
+    return filepath.is_file()
 
 
 def validate_is_int(num) -> bool:
     try:
         int(num)
-    except ValueError:
+    except (ValueError, TypeError):
         return False
     return True
 
@@ -18,20 +18,12 @@ def validate_is_int(num) -> bool:
 def validate_name(name: str) -> bool:
     if len(name) < 1 or len(name) > 28:
         return False
-    for ch in name:
-        if ch not in ALLOWED_NAME_CHARS:
-            return False
-    return True
+    return all(ch in ALLOWED_NAME_CHARS for ch in name)
 
 
 def validate_sex(sex: int) -> bool:
-    if sex != 0 and sex != 1:
-        return False
-    return True
+    return sex in {0, 1}
 
 
 def validate_at_least_one_arg(*args):
-    for arg in args:
-        if arg is not None:
-            return True
-    return False
+    return any(arg is not None for arg in args)

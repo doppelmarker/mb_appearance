@@ -44,25 +44,25 @@ class ArgParser:
             "-s",
             "--show",
             help="Show backuped characters.",
-            action='store_true'
+            action="store_true"
         )
         self.parser.add_argument(
             "-r",
             "--restore",
             help="Restore characters file from backup.",
-            metavar='RESTORE_FROM'
+            metavar="RESTORE_FROM"
         )
         self.parser.add_argument(
             "-g",
             "--gen",
             help="Generate N random characters.",
-            metavar='N',
+            metavar="N",
             type=int
         )
         self.parser.add_argument(
             "--wse2",
             help="Use WSE2 (Warband Script Enhancer 2) profiles directory.",
-            action='store_true'
+            action="store_true"
         )
 
     @property
