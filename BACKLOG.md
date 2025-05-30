@@ -2,35 +2,7 @@
 
 This backlog follows Claude Code best practices for task planning and project improvement.
 
-## 1. Unit Testing Suite
-**Priority: High**
-**Goal: Achieve >80% test coverage for critical binary manipulation logic**
-
-### Tasks:
-- [x] Set up pytest framework and test structure
-- [x] Write tests for `helpers.py`:
-  - [x] `read_profiles()` and `write_profiles()` with valid/invalid files
-  - [x] `int_to_hex_bytes()` with various values
-  - [x] `get_name_length()` with different terminators
-  - [x] `get_header_with_chars_amount()` header updates
-  - [x] Random generation functions (byte, sex, skin)
-- [x] Write tests for `service.py`:
-  - [x] `backup()` functionality
-  - [x] `restore_from_backup()` with valid/invalid backups
-  - [x] `generate_n_random_characters()` character generation
-  - [x] `show_backuped_characters()` output
-- [x] Write tests for `validators.py`:
-  - [x] Path validation logic
-  - [x] All validation functions tested
-- [x] Configure coverage reporting
-
-### Acceptance Criteria:
-- Test coverage >80% for core modules
-- All edge cases covered
-- Tests pass on Windows/Linux/macOS
-- CI/CD integration ready
-
-## 2. Project Structure Improvements
+## 1. Project Structure Improvements
 **Priority: Medium**
 **Goal: Align with Python packaging best practices**
 
@@ -191,6 +163,59 @@ This backlog follows Claude Code best practices for task planning and project im
 - [ ] Automated release process
 - [ ] Clean pip install from PyPI
 - [ ] Contributing guide complete
+
+## 7. Fix Character Generation Directory Creation
+**Priority: High**
+**Goal: Ensure profiles directory exists before generating characters**
+
+### Tasks:
+- [ ] Add directory creation logic in `service.py`:
+  - [ ] Check if profiles directory exists before generating
+  - [ ] Create directory structure if missing
+  - [ ] Handle both standard and WSE2 paths
+- [ ] Update `generate_n_random_characters()`:
+  - [ ] Add try/except for directory creation
+  - [ ] Provide informative error messages
+- [ ] Add tests for directory creation:
+  - [ ] Test generation with missing directory
+  - [ ] Test permission errors
+  - [ ] Test cross-platform paths
+- [ ] Consider adding `--init` command to set up game directories
+
+### Acceptance Criteria:
+- Character generation works even if profiles directory doesn't exist
+- Proper error messages for permission issues
+- Works for both standard and WSE2 installations
+- No silent failures
+
+## 8. List Characters Feature
+**Priority: Medium**
+**Goal: Add ability to list all characters in the main profiles file**
+
+### Tasks:
+- [ ] Add `--list` flag to argparser:
+  - [ ] Show character names from profiles.dat
+  - [ ] Optional verbose mode to show more details
+- [ ] Implement character listing in `service.py`:
+  - [ ] `list_characters()` - Extract and display all character names
+  - [ ] Support both standard and WSE2 profiles
+  - [ ] Show character count
+- [ ] Add parsing logic in `helpers.py`:
+  - [ ] Extract character names from binary data
+  - [ ] Handle different character data formats
+  - [ ] Parse character metadata if needed
+- [ ] Add tests for listing functionality:
+  - [ ] Test with various character counts
+  - [ ] Test with corrupted files
+  - [ ] Test empty profiles
+- [ ] Consider JSON/CSV export options for the list
+
+### Acceptance Criteria:
+- Can list all character names from profiles.dat
+- Clear output format
+- Handles edge cases gracefully
+- Option for detailed output
+- Well-tested functionality
 
 ## Notes for Claude Code
 
