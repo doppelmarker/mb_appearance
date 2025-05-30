@@ -8,9 +8,16 @@ def read(file_name):
         return file.read()
 
 
+def get_version():
+    version_file = os.path.join(os.path.dirname(__file__), "appearance", "__version__.py")
+    with open(version_file) as f:
+        exec(compile(f.read(), version_file, "exec"))
+    return locals()["__version__"]
+
+
 setup(
     name="mb-app",
-    version="0.0.7",
+    version=get_version(),
     author="doppelmarker",
     author_email="doppelmarker@gmail.com",
     url="https://github.com/doppelmarker/mb_appearance",

@@ -1,6 +1,8 @@
 """Module which encompasses console arguments settings and parsing logics."""
 import argparse
 
+from .__version__ import __version__
+
 
 class ArgParser:
     """Class parsing console arguments."""
@@ -26,7 +28,7 @@ class ArgParser:
             "--version",
             help="Print version info.",
             action="version",
-            version="0.0.1",
+            version=__version__,
         )
         self.parser.add_argument(
             "--verbose", help="Output verbose status messages.", action="store_true"
