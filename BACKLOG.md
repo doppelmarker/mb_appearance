@@ -180,7 +180,6 @@ This backlog follows Claude Code best practices for task planning and project im
   - [ ] Test generation with missing directory
   - [ ] Test permission errors
   - [ ] Test cross-platform paths
-- [ ] Consider adding `--init` command to set up game directories
 
 ### Acceptance Criteria:
 - Character generation works even if profiles directory doesn't exist

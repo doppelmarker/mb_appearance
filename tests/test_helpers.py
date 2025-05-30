@@ -64,6 +64,35 @@ def test_write_profiles(tmp_path):
     assert test_file.read_bytes() == test_data
 
 
+def test_write_profiles_creates_directory(tmp_path):
+    # Test that write_profiles creates parent directories
+    test_data = b"test profile data"
+    test_file = tmp_path / "nonexistent" / "directory" / "test_profiles.dat"
+    
+    # Directory shouldn't exist yet
+    assert not test_file.parent.exists()
+    
+    write_profiles(test_file, test_data)
+    
+    # Directory should be created and file written
+    assert test_file.parent.exists()
+    assert test_file.exists()
+    assert test_file.read_bytes() == test_data
+
+
+def test_write_profiles_handles_existing_directory(tmp_path):
+    # Test that write_profiles works when directory already exists
+    test_data = b"test profile data"
+    nested_dir = tmp_path / "existing" / "directory"
+    nested_dir.mkdir(parents=True)
+    test_file = nested_dir / "test_profiles.dat"
+    
+    write_profiles(test_file, test_data)
+    
+    assert test_file.exists()
+    assert test_file.read_bytes() == test_data
+
+
 def test_read_nonexistent_file():
     with pytest.raises(FileNotFoundError):
         read_profiles(Path("/nonexistent/file.dat"))

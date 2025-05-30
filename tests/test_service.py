@@ -161,3 +161,52 @@ def test_generate_characters_creates_unique_characters(stub_profiles_file, stub_
     assert len(char1) == char_size
     assert len(char2) == char_size
     assert len(char3) == char_size
+
+
+def test_generate_characters_creates_directory(tmp_path, stub_resource_files):
+    """Test that character generation creates the profiles directory if it doesn't exist."""
+    # Create a path in a non-existent directory
+    nonexistent_dir = tmp_path / "Mount&Blade Warband"
+    profiles_file = nonexistent_dir / "profiles.dat"
+    
+    # Directory shouldn't exist yet
+    assert not nonexistent_dir.exists()
+    
+    # Generate characters
+    generate_n_random_characters(
+        3,
+        profiles_file_path=profiles_file,
+        header_file_path=stub_resource_files["header"],
+        common_char_file_path=stub_resource_files["common_char"]
+    )
+    
+    # Directory and file should now exist
+    assert nonexistent_dir.exists()
+    assert profiles_file.exists()
+    
+    # Verify the file has content
+    content = profiles_file.read_bytes()
+    assert len(content) > 16  # Header + characters
+
+
+def test_generate_characters_wse2_directory(tmp_path, stub_resource_files):
+    """Test that character generation works with WSE2 directory structure."""
+    # Create a path for WSE2
+    wse2_dir = tmp_path / "Mount&Blade Warband WSE2"
+    profiles_file = wse2_dir / "profiles.dat"
+    
+    # Directory shouldn't exist yet
+    assert not wse2_dir.exists()
+    
+    # Generate characters with wse2 flag
+    generate_n_random_characters(
+        2,
+        wse2=True,
+        profiles_file_path=profiles_file,
+        header_file_path=stub_resource_files["header"],
+        common_char_file_path=stub_resource_files["common_char"]
+    )
+    
+    # Directory and file should now exist
+    assert wse2_dir.exists()
+    assert profiles_file.exists()

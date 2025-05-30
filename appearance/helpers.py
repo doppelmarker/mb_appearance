@@ -25,8 +25,11 @@ def read_profiles(filepath: Path) -> bytes:
 
 
 def write_profiles(filepath: Path, profiles: bytes) -> None:
+    # Ensure parent directory exists
+    filepath = Path(filepath)
+    filepath.parent.mkdir(parents=True, exist_ok=True)
+    
     with open(filepath, mode="wb") as file:
-
         file.write(profiles)
 
 
