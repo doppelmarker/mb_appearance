@@ -8,10 +8,12 @@ from appearance.consts import (
     CHAR_OFFSETS,
     COMMON_CHAR_FILE_PATH,
     HEADER_FILE_PATH,
+    MIN_BYTES_AMOUNT_FOR_CHAR,
     get_profiles_file_path,
 )
 from appearance.helpers import (
     get_header_with_chars_amount,
+    get_name_length,
     get_random_byte_for_idx,
     get_random_sex,
     get_random_skin,
@@ -118,3 +120,109 @@ def generate_n_random_characters(
 
     write_profiles(profiles_file_path, header)
     logger.info("Successfully generated %d random characters!", n)
+
+
+def delete_character(profiles_file_path: str, index: int = None, name: str = None) -> bool:
+    """Delete a character from the profiles file.
+    
+    Args:
+        profiles_file_path: Path to the profiles.dat file
+        index: Character index to delete (0-based)
+        name: Character name to delete
+        
+    Returns:
+        True if deletion was successful, False otherwise
+    """
+    # Must specify either index or name
+    if index is None and name is None:
+        logger.error("Must specify either index or name to delete")
+        return False
+    
+    try:
+        # Read the entire profiles file
+        profiles_data = read_profiles(profiles_file_path)
+        
+        # Extract header and character count
+        header = profiles_data[:12]
+        char_count = int.from_bytes(profiles_data[4:8], 'little')
+        
+        # Don't allow deleting the last character
+        if char_count <= 1:
+            logger.error("Cannot delete the last remaining character")
+            return False
+        
+        # Find all character positions
+        char_positions = []
+        current_pos = 12  # Start after header
+        
+        for i in range(char_count):
+            if current_pos >= len(profiles_data):
+                break
+                
+            char_start = current_pos
+            
+            # Get name length (at offset 0 of character)
+            name_length = profiles_data[current_pos]
+            
+            # Calculate character size
+            # Structure: name_length(1) + padding(3) + name(variable) + rest(85-name_length)
+            char_size = 4 + name_length + (85 - name_length)
+            
+            # Ensure minimum size
+            if char_size < MIN_BYTES_AMOUNT_FOR_CHAR:
+                char_size = MIN_BYTES_AMOUNT_FOR_CHAR
+            
+            char_positions.append({
+                'index': i,
+                'start': char_start,
+                'end': char_start + char_size,
+                'name_start': char_start + 4,
+                'name_end': char_start + 4 + name_length,
+                'size': char_size
+            })
+            
+            current_pos += char_size
+        
+        # Find the character to delete
+        char_to_delete = None
+        
+        if index is not None:
+            # Delete by index (index takes precedence)
+            if 0 <= index < len(char_positions):
+                char_to_delete = char_positions[index]
+            else:
+                logger.error("Invalid character index: %d", index)
+                return False
+        elif name is not None:
+            # Delete by name
+            for char_info in char_positions:
+                char_name = profiles_data[char_info['name_start']:char_info['name_end']].decode('utf-8', errors='ignore').rstrip('\x00')
+                if char_name == name:
+                    char_to_delete = char_info
+                    break
+            
+            if char_to_delete is None:
+                logger.error("Character with name '%s' not found", name)
+                return False
+        
+        # Delete the character by removing its bytes
+        new_data = profiles_data[:char_to_delete['start']] + profiles_data[char_to_delete['end']:]
+        
+        # Update character count in header
+        new_count = char_count - 1
+        new_header = get_header_with_chars_amount(header, new_count)
+        new_data = new_header + new_data[12:]
+        
+        # Write the modified data back
+        write_profiles(profiles_file_path, new_data)
+        
+        if index is not None:
+            logger.info("Successfully deleted character at index %d", index)
+        else:
+            logger.info("Successfully deleted character '%s'", name)
+        
+        return True
+        
+    except Exception as e:
+        logger.error("Failed to delete character: %s", str(e))
+        return False

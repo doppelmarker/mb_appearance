@@ -295,3 +295,96 @@ def test_main_with_default_logging(tmp_path, monkeypatch, caplog):
     
     # Should have INFO message
     assert "Successfully generated 1 random characters!" in caplog.text
+
+
+def test_main_with_delete_command_by_index(tmp_path, monkeypatch, caplog):
+    # Create test profiles file with characters
+    profiles_dir = tmp_path / "profiles"
+    profiles_dir.mkdir()
+    profiles_file = profiles_dir / "profiles.dat"
+    
+    # Create a test file with 3 characters
+    header = b'\x0a\x00\x00\x00' + b'\x03\x00\x00\x00' + b'\x03\x00\x00\x00'
+    char1 = b'\x09' + b'\x00' * 3 + b'TestChar1' + b'\x00' * 76
+    char2 = b'\x09' + b'\x00' * 3 + b'TestChar2' + b'\x00' * 76
+    char3 = b'\x09' + b'\x00' * 3 + b'TestChar3' + b'\x00' * 76
+    profiles_file.write_bytes(header + char1 + char2 + char3)
+    
+    # Monkeypatch the paths
+    monkeypatch.setattr("appearance.app.get_profiles_file_path", lambda wse2: profiles_file)
+    
+    # Mock command line arguments
+    test_args = ["mb-app", "-d", "1"]
+    monkeypatch.setattr(sys, "argv", test_args)
+    
+    with caplog.at_level(logging.INFO):
+        main()
+    
+    # Check success message
+    assert "Successfully deleted character at index 1" in caplog.text
+    
+    # Verify character was actually deleted
+    data = profiles_file.read_bytes()
+    assert b'TestChar1' in data
+    assert b'TestChar2' not in data
+    assert b'TestChar3' in data
+
+
+def test_main_with_delete_command_by_name(tmp_path, monkeypatch, caplog):
+    # Create test profiles file with characters
+    profiles_dir = tmp_path / "profiles"
+    profiles_dir.mkdir()
+    profiles_file = profiles_dir / "profiles.dat"
+    
+    # Create a test file with 3 characters
+    header = b'\x0a\x00\x00\x00' + b'\x03\x00\x00\x00' + b'\x03\x00\x00\x00'
+    char1 = b'\x09' + b'\x00' * 3 + b'TestChar1' + b'\x00' * 76
+    char2 = b'\x09' + b'\x00' * 3 + b'TestChar2' + b'\x00' * 76
+    char3 = b'\x09' + b'\x00' * 3 + b'TestChar3' + b'\x00' * 76
+    profiles_file.write_bytes(header + char1 + char2 + char3)
+    
+    # Monkeypatch the paths
+    monkeypatch.setattr("appearance.app.get_profiles_file_path", lambda wse2: profiles_file)
+    
+    # Mock command line arguments
+    test_args = ["mb-app", "-d", "TestChar2"]
+    monkeypatch.setattr(sys, "argv", test_args)
+    
+    with caplog.at_level(logging.INFO):
+        main()
+    
+    # Check success message
+    assert "Successfully deleted character 'TestChar2'" in caplog.text
+    
+    # Verify character was actually deleted
+    data = profiles_file.read_bytes()
+    assert b'TestChar1' in data
+    assert b'TestChar2' not in data
+    assert b'TestChar3' in data
+
+
+def test_main_with_delete_command_failure(tmp_path, monkeypatch, capsys):
+    # Create test profiles file with only one character
+    profiles_dir = tmp_path / "profiles"
+    profiles_dir.mkdir()
+    profiles_file = profiles_dir / "profiles.dat"
+    
+    # Create a test file with 1 character
+    header = b'\x0a\x00\x00\x00' + b'\x01\x00\x00\x00' + b'\x01\x00\x00\x00'
+    char1 = b'\x09' + b'\x00' * 3 + b'TestChar1' + b'\x00' * 76
+    profiles_file.write_bytes(header + char1)
+    
+    # Monkeypatch the paths
+    monkeypatch.setattr("appearance.app.get_profiles_file_path", lambda wse2: profiles_file)
+    
+    # Mock command line arguments
+    test_args = ["mb-app", "-d", "0"]
+    monkeypatch.setattr(sys, "argv", test_args)
+    
+    # Should exit with error
+    with pytest.raises(SystemExit) as exc_info:
+        main()
+    
+    assert exc_info.value.code == 2
+    captured = capsys.readouterr()
+    assert "Failed to delete character!" in captured.err

@@ -62,6 +62,12 @@ class ArgParser:
             type=int
         )
         self.parser.add_argument(
+            "-d",
+            "--delete",
+            help="Delete a character by index or name.",
+            metavar="INDEX_OR_NAME"
+        )
+        self.parser.add_argument(
             "--wse2",
             help="Use WSE2 (Warband Script Enhancer 2) profiles directory.",
             action="store_true"

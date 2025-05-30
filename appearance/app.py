@@ -2,8 +2,8 @@ import logging
 from pathlib import Path
 
 from appearance.argparser import ArgParser
-from appearance.consts import BACKUP_FILE_DIR, RESOURCES_FILE_DIR
-from appearance.service import backup, generate_n_random_characters, restore_from_backup, show_backuped_characters
+from appearance.consts import BACKUP_FILE_DIR, RESOURCES_FILE_DIR, get_profiles_file_path
+from appearance.service import backup, delete_character, generate_n_random_characters, restore_from_backup, show_backuped_characters
 from appearance.validators import validate_file_exists
 
 
@@ -28,9 +28,10 @@ def main():
     show_backups: bool = cli_args.show
     restore_from: str = cli_args.restore
     generate: int = cli_args.gen
+    delete: str = cli_args.delete
     wse2: bool = cli_args.wse2
 
-    if not (backup_to or restore_from or generate or show_backups):
+    if not (backup_to or restore_from or generate or show_backups or delete):
         arg_parser.parser.error("No action requested!")
 
     if show_backups:
@@ -53,3 +54,16 @@ def main():
 
     if generate:
         generate_n_random_characters(generate, wse2)
+    
+    if delete:
+        profiles_path = get_profiles_file_path(wse2)
+        # Try to parse as integer (index)
+        try:
+            index = int(delete)
+            success = delete_character(str(profiles_path), index=index)
+        except ValueError:
+            # It's a name
+            success = delete_character(str(profiles_path), name=delete)
+        
+        if not success:
+            arg_parser.parser.error("Failed to delete character!")

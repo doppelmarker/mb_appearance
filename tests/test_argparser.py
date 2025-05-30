@@ -5,6 +5,7 @@ from io import StringIO
 import pytest
 
 from appearance.argparser import ArgParser
+from appearance.__version__ import __version__
 
 
 def test_argparser_initialization():
@@ -38,7 +39,7 @@ def test_argparser_version_option(monkeypatch, capsys):
     
     # Version should be printed
     captured = capsys.readouterr()
-    assert "0.0.1" in captured.out
+    assert __version__ in captured.out
 
 
 def test_argparser_backup_option(monkeypatch):
@@ -87,6 +88,15 @@ def test_argparser_generate_option(monkeypatch):
     assert args.backup is None
     assert args.restore is None
     assert args.show is False
+
+
+def test_argparser_delete_option(monkeypatch):
+    test_args = ["mb-app", "-d", "TestChar"]
+    monkeypatch.setattr(sys, "argv", test_args)
+    
+    parser = ArgParser()
+    args = parser.args
+    assert args.delete == "TestChar"
 
 
 def test_argparser_wse2_option(monkeypatch):
