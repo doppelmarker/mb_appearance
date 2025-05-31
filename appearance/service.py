@@ -103,23 +103,94 @@ def generate_n_random_characters(
     names = string.ascii_lowercase
 
     for char_idx in range(n):
+        # Create a fresh copy of the template for each character
+        char_data = sample[:]
+        
         for i in range(APPEARANCE_BYTES_AMOUNT):
             rb = get_random_byte_for_idx(i)
-            # random sex
-            sample = sample[0:sex_offset] + get_random_sex() + sample[sex_offset + 1:]
-            # random skin
-            sample = sample[0:skin_offset] + get_random_skin() + sample[skin_offset + 1:]
             # random appearance
-            sample = sample[0:appearance_offset + i] + rb + sample[appearance_offset + i + 1:]
+            char_data = char_data[0:appearance_offset + i] + rb + char_data[appearance_offset + i + 1:]
+        
+        # random sex
+        char_data = char_data[0:sex_offset] + get_random_sex() + char_data[sex_offset + 1:]
+        # random skin
+        char_data = char_data[0:skin_offset] + get_random_skin() + char_data[skin_offset + 1:]
         # set name
-        sample = sample[0:name_offset] + names[char_idx % len(names)].encode() + sample[name_offset + 1:]
-        header += sample
+        char_data = char_data[0:name_offset] + names[char_idx % len(names)].encode() + char_data[name_offset + 1:]
+        header += char_data
 
     if profiles_file_path is None:
         profiles_file_path = get_profiles_file_path(wse2)
 
     write_profiles(profiles_file_path, header)
     logger.info("Successfully generated %d random characters!", n)
+
+
+def list_characters(profiles_file_path: str = None, wse2: bool = False) -> list:
+    """List all characters in the profiles file.
+    
+    Args:
+        profiles_file_path: Override path to profiles file (for testing)
+        wse2: Whether to use WSE2 profiles
+        
+    Returns:
+        List of dictionaries containing character information
+    """
+    if profiles_file_path is None:
+        profiles_file_path = get_profiles_file_path(wse2)
+    
+    try:
+        # Read the entire profiles file
+        profiles_data = read_profiles(profiles_file_path)
+        
+        # Extract header and character count
+        char_count = int.from_bytes(profiles_data[4:8], 'little')
+        
+        # Parse all characters
+        characters = []
+        current_pos = 12  # Start after header
+        
+        for i in range(char_count):
+            if current_pos >= len(profiles_data):
+                break
+                
+            char_info = {}
+            char_info['index'] = i
+            
+            # Get name length (at offset 0 of character)
+            name_length = profiles_data[current_pos]
+            
+            # Get character name
+            name_start = current_pos + 4
+            name_end = name_start + name_length
+            char_info['name'] = profiles_data[name_start:name_end].decode('utf-8', errors='ignore').rstrip('\x00')
+            
+            # Get character sex (0=male, 1=female)
+            # Sex is at offset 5 from character start
+            sex_offset = current_pos + CHAR_OFFSETS["SEX"]
+            sex_byte = profiles_data[sex_offset]
+            char_info['sex'] = 'Female' if sex_byte == 1 else 'Male'
+            
+            # Get character skin
+            # Skin is at offset 14 from character start
+            skin_offset = current_pos + CHAR_OFFSETS["SKIN"]
+            skin_byte = profiles_data[skin_offset]
+            skin_map = {0: 'White', 16: 'Light', 32: 'Tan', 48: 'Dark', 64: 'Black'}
+            char_info['skin'] = skin_map.get(skin_byte, f'Unknown ({skin_byte})')
+            
+            # Calculate character size
+            char_size = 4 + name_length + (85 - name_length)
+            if char_size < MIN_BYTES_AMOUNT_FOR_CHAR:
+                char_size = MIN_BYTES_AMOUNT_FOR_CHAR
+            
+            characters.append(char_info)
+            current_pos += char_size
+        
+        return characters
+        
+    except Exception as e:
+        logger.error("Failed to list characters: %s", str(e))
+        return []
 
 
 def delete_character(profiles_file_path: str, index: int = None, name: str = None) -> bool:
