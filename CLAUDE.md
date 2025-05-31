@@ -115,6 +115,91 @@ The script will:
 - **Major**: Breaking changes, major refactoring
 - Stay in 0.x.x until API is stable
 
+## Binary File Format Details
+
+**CRITICAL: Understanding Mount & Blade profiles.dat Structure**
+
+Through extensive debugging and testing, we've reverse-engineered the binary structure of Mount & Blade character files:
+
+### File Structure Overview
+```
+profiles.dat:
+├── Header (12 bytes)
+│   ├── Offset 0-3: Unknown/magic bytes
+│   ├── Offset 4-7: Character count (little-endian)
+│   └── Offset 8-11: Character count duplicate (little-endian)
+└── Character Data (89+ bytes per character)
+```
+
+### Character Data Structure (per character)
+**IMPORTANT**: Each character is exactly 89 bytes minimum (`MIN_BYTES_AMOUNT_FOR_CHAR`)
+
+```
+Character Block (89 bytes):
+├── Offset 0: Name length (1 byte)
+├── Offset 1-3: Padding (3 bytes, usually 0x00)
+├── Offset 4: First character of name
+├── Offset 5: SEX byte (0=Male, 1=Female) - OVERLAPS WITH NAME!
+├── Offset 6+: Rest of name data
+├── Offset 9-12: Banner data (4 bytes)
+├── Offset 14: SKIN byte (0=White, 16=Light, 32=Tan, 48=Dark, 64=Black)
+├── Offset 21-31: Appearance bytes (11 bytes of random character features)
+└── Padding to 89 bytes minimum
+```
+
+### Critical Constants (from consts.py)
+```python
+CHAR_OFFSETS = {
+    "NAME_LENGTH": 0,    # Offset to name length byte
+    "NAME": 4,           # Offset to name start
+    "SEX": 5,            # Offset to sex byte (overlaps with name!)
+    "BANNER": 9,         # Offset to banner (4 bytes)
+    "SKIN": 14,          # Offset to skin byte
+    "APPEARANCE": 21,    # Offset to appearance bytes (11 bytes)
+}
+```
+
+### Known Issues & Solutions
+
+#### Bug #9: Sample Reuse Corruption (FIXED)
+**Problem**: Original code reused the same `sample` template for all characters:
+```python
+# BROKEN CODE:
+for char_idx in range(n):
+    sample = sample[0:sex_offset] + get_random_sex() + sample[sex_offset + 1:]
+    # This modifies the template for subsequent characters!
+```
+
+**Solution**: Create fresh copy for each character:
+```python
+# FIXED CODE:
+for char_idx in range(n):
+    char_data = sample[:]  # Fresh copy!
+    char_data = char_data[0:sex_offset] + get_random_sex() + char_data[sex_offset + 1:]
+```
+
+### Resource Files
+- **`resources/header.dat`**: 12-byte header template
+- **`resources/common_char.dat`**: Contains 12-byte header + 89-byte character template
+- **Character template starts at offset 12** in `common_char.dat`
+
+### Testing with Binary Data
+**IMPORTANT**: When creating test data, always use real character generation instead of hardcoded binary data. The character structure is complex with overlapping fields, making manual binary construction error-prone.
+
+```python
+# GOOD: Use real generation
+generate_n_random_characters(3, profiles_file_path=test_file, ...)
+characters = list_characters(profiles_file_path=test_file)
+
+# BAD: Manual binary construction
+char_data = b"\x04\x00\x00\x00Test\x00..."  # Fragile and error-prone
+```
+
+### Valid Values
+- **Sex**: 0 (Male) or 1 (Female)
+- **Skin**: 0 (White), 16 (Light), 32 (Tan), 48 (Dark), 64 (Black)
+- **Any other values indicate data corruption**
+
 ## Commit Guidelines
 
 When Claude generates commits, use the following format:
