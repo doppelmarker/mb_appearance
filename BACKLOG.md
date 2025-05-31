@@ -216,6 +216,50 @@ This backlog follows Claude Code best practices for task planning and project im
 - Option for detailed output
 - Well-tested functionality
 
+## 9. Fix Character Generation Bug - Sample Reuse ✅ COMPLETED
+**Priority: High**
+**Goal: Fix bug in generate_n_random_characters that causes corrupted character data**
+
+### Issue Description:
+The `generate_n_random_characters()` function in `service.py` has a bug where it modifies and reuses the same `sample` variable for each character in the loop. This causes data corruption where:
+- The first character gets correct random values
+- Subsequent characters inherit modified data from previous iterations
+- Skin values often end up as 255 (0xFF) instead of valid values (0, 16, 32, 48, 64)
+- Other character attributes may also be corrupted
+
+### Root Cause:
+Lines 109-113 in `service.py` modify the `sample` variable in-place:
+```python
+sample = sample[0:sex_offset] + get_random_sex() + sample[sex_offset + 1:]
+sample = sample[0:skin_offset] + get_random_skin() + sample[skin_offset + 1:]
+sample = sample[0:appearance_offset + i] + rb + sample[appearance_offset + i + 1:]
+```
+This modified `sample` is then used as the base for the next character, carrying over corrupted data.
+
+### Tasks:
+- [x] Fix the sample reuse bug:
+  - [x] Create a fresh copy of the template for each character
+  - [x] Ensure each character starts with clean data
+  - [x] Preserve the original template throughout the loop
+- [x] Add validation for generated characters:
+  - [x] Verify skin values are in valid range
+  - [x] Check other attributes for correctness
+- [x] Add tests to prevent regression:
+  - [x] Test that all generated characters have valid skin values
+  - [x] Test that each character is independent
+  - [x] Verify no data corruption between characters
+- [x] Update existing tests if needed
+
+### Acceptance Criteria:
+- ✅ All generated characters have valid skin values (0, 16, 32, 48, or 64)
+- ✅ Each character's data is independent of others
+- ✅ No data corruption in any character attributes
+- ✅ Tests verify the fix and prevent regression
+- ✅ The list command shows proper skin values, not "Unknown (255)"
+
+### Solution Implemented:
+Fixed by creating a fresh copy of the template for each character using `char_data = sample[:]` instead of modifying the original template. Added comprehensive tests including E2E tests to verify the fix.
+
 ## Notes for Claude Code
 
 When implementing these changes:
