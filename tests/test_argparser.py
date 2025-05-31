@@ -99,6 +99,19 @@ def test_argparser_delete_option(monkeypatch):
     assert args.delete == "TestChar"
 
 
+def test_argparser_list_option(monkeypatch):
+    test_args = ["mb-app", "-l"]
+    monkeypatch.setattr(sys, "argv", test_args)
+    
+    parser = ArgParser()
+    args = parser.args
+    assert args.list is True
+    assert args.backup is None
+    assert args.restore is None
+    assert args.gen is None
+    assert args.show is False
+
+
 def test_argparser_wse2_option(monkeypatch):
     test_args = ["mb-app", "--wse2", "-g", "5"]
     monkeypatch.setattr(sys, "argv", test_args)
@@ -162,6 +175,8 @@ def test_argparser_no_arguments(monkeypatch):
     assert args.restore is None
     assert args.gen is None
     assert args.show is False
+    assert args.delete is None
+    assert args.list is False
     assert args.wse2 is False
     assert args.verbose is False
     assert args.quiet is False

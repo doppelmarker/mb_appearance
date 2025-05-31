@@ -388,3 +388,111 @@ def test_main_with_delete_command_failure(tmp_path, monkeypatch, capsys):
     assert exc_info.value.code == 2
     captured = capsys.readouterr()
     assert "Failed to delete character!" in captured.err
+
+
+def test_main_with_list_command(tmp_path, monkeypatch, caplog, stub_resource_files):
+    # Create test profiles file using actual generation to ensure proper format
+    profiles_dir = tmp_path / "profiles"
+    profiles_dir.mkdir()
+    profiles_file = profiles_dir / "profiles.dat"
+    
+    # Generate real characters using our fixed generation function
+    from appearance.service import generate_n_random_characters
+    generate_n_random_characters(
+        3,
+        profiles_file_path=profiles_file,
+        header_file_path=stub_resource_files["header"],
+        common_char_file_path=stub_resource_files["common_char"]
+    )
+    
+    # Monkeypatch the paths
+    monkeypatch.setattr("appearance.app.get_profiles_file_path", lambda wse2: profiles_file)
+    monkeypatch.setattr("appearance.service.get_profiles_file_path", lambda wse2: profiles_file)
+    
+    # Mock command line arguments
+    test_args = ["mb-app", "-l"]
+    monkeypatch.setattr(sys, "argv", test_args)
+    
+    with caplog.at_level(logging.INFO):
+        main()
+    
+    # Check output contains all characters with valid skin values
+    assert "Characters in profiles.dat:" in caplog.text
+    
+    # Extract character lines
+    character_lines = [line for line in caplog.text.split('\n') if '. ' in line and '(' in line]
+    assert len(character_lines) == 3
+    
+    # Verify all characters have valid skin values (the key fix verification)
+    valid_skins = ['White', 'Light', 'Tan', 'Dark', 'Black']
+    for line in character_lines:
+        assert any(skin in line for skin in valid_skins), f"Invalid skin in: {line}"
+        assert 'Unknown' not in line, f"Corrupted skin value in: {line}"
+
+
+def test_main_with_list_command_no_characters(tmp_path, monkeypatch, caplog):
+    # Create test profiles file with no characters
+    profiles_dir = tmp_path / "profiles"
+    profiles_dir.mkdir()
+    profiles_file = profiles_dir / "profiles.dat"
+    
+    # Create header with 0 characters
+    header = b"\x00\x00\x00\x00"  # 4 bytes
+    header += b"\x00\x00\x00\x00"  # Character count = 0
+    header += b"\x00\x00\x00\x00"  # 4 more bytes
+    
+    profiles_file.write_bytes(header)
+    
+    # Monkeypatch the paths
+    monkeypatch.setattr("appearance.app.get_profiles_file_path", lambda wse2: profiles_file)
+    monkeypatch.setattr("appearance.service.get_profiles_file_path", lambda wse2: profiles_file)
+    
+    # Mock command line arguments
+    test_args = ["mb-app", "-l"]
+    monkeypatch.setattr(sys, "argv", test_args)
+    
+    with caplog.at_level(logging.INFO):
+        main()
+    
+    # Should indicate no characters found
+    assert "No characters found or unable to read profiles file." in caplog.text
+
+
+def test_main_with_list_command_wse2(tmp_path, monkeypatch, caplog, stub_resource_files):
+    # Create test profiles file for WSE2 using actual generation
+    profiles_dir = tmp_path / "profiles"
+    profiles_dir.mkdir()
+    profiles_file = profiles_dir / "profiles.dat"
+    
+    # Generate real characters using our fixed generation function
+    from appearance.service import generate_n_random_characters
+    generate_n_random_characters(
+        1,
+        profiles_file_path=profiles_file,
+        header_file_path=stub_resource_files["header"],
+        common_char_file_path=stub_resource_files["common_char"]
+    )
+    
+    # Monkeypatch the paths
+    monkeypatch.setattr("appearance.app.get_profiles_file_path", lambda wse2: profiles_file)
+    monkeypatch.setattr("appearance.service.get_profiles_file_path", lambda wse2: profiles_file)
+    
+    # Mock command line arguments with WSE2 flag
+    test_args = ["mb-app", "-l", "--wse2"]
+    monkeypatch.setattr(sys, "argv", test_args)
+    
+    with caplog.at_level(logging.INFO):
+        main()
+    
+    # Check output contains the character with valid skin value
+    assert "Characters in profiles.dat:" in caplog.text
+    
+    # Extract character lines
+    character_lines = [line for line in caplog.text.split('\n') if '. ' in line and '(' in line]
+    assert len(character_lines) == 1
+    
+    # Verify character has valid skin value
+    valid_skins = ['White', 'Light', 'Tan', 'Dark', 'Black']
+    line = character_lines[0]
+    assert any(skin in line for skin in valid_skins), f"Invalid skin in WSE2 character: {line}"
+    assert 'Unknown' not in line, f"Corrupted skin value in WSE2 character: {line}"
