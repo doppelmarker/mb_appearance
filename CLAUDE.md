@@ -101,13 +101,17 @@ python bump_version.py patch --no-git
 
 # Skip CHANGELOG update
 python bump_version.py patch --no-changelog
+
+# Skip README usage update
+python bump_version.py patch --no-readme
 ```
 
 The script will:
 1. Update `appearance/__version__.py`
-2. Update `CHANGELOG.md` with new version section
-3. Create git commit and tag
-4. Provide next steps for release
+2. Update `README.md` usage section with latest `mb-app -h` output
+3. Update `CHANGELOG.md` with new version section
+4. Create git commit and tag
+5. Provide next steps for release
 
 ### Version Guidelines
 - **Patch**: Bug fixes, documentation updates, minor improvements

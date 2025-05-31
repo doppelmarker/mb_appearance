@@ -39,6 +39,47 @@ def update_version_file(new_version):
     version_file.write_text(content)
 
 
+def update_readme_usage():
+    """Update README.md with latest help output from mb-app."""
+    readme_file = Path("README.md")
+    
+    # Get the current help output
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "appearance", "-h"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        help_output = result.stdout
+    except subprocess.CalledProcessError as e:
+        print(f"Warning: Could not get help output: {e}")
+        return False
+    
+    # Read current README
+    content = readme_file.read_text()
+    
+    # Find the usage section and replace it
+    # Match from "usage: mb-app" to the line before "## Examples" or similar
+    pattern = r"(## Usage\n\n)(    usage: mb-app.*?)(\n\n## )"
+    
+    # Format the help output with proper indentation
+    indented_help = "\n".join("    " + line if line else "" for line in help_output.strip().split("\n"))
+    
+    # Replace the usage section
+    new_content = re.sub(
+        pattern,
+        rf"\1{indented_help}\3",
+        content,
+        flags=re.DOTALL
+    )
+    
+    if new_content != content:
+        readme_file.write_text(new_content)
+        return True
+    return False
+
+
 def update_changelog(old_version, new_version, bump_type):
     """Update CHANGELOG.md with new version section."""
     changelog_file = Path("CHANGELOG.md")
@@ -101,6 +142,11 @@ def main():
         action="store_true",
         help="Skip CHANGELOG.md update"
     )
+    parser.add_argument(
+        "--no-readme",
+        action="store_true",
+        help="Skip README.md usage update"
+    )
     args = parser.parse_args()
     
     # Get current version
@@ -122,6 +168,13 @@ def main():
     update_version_file(new_version)
     print(f"Updated appearance/__version__.py")
     
+    # Update README usage section
+    if not args.no_readme:
+        if update_readme_usage():
+            print("Updated README.md usage section")
+        else:
+            print("README.md usage section is already up to date")
+    
     # Update CHANGELOG
     if not args.no_changelog:
         update_changelog(current_version, new_version, args.bump_type)
@@ -133,6 +186,8 @@ def main():
         run_git_command("git add appearance/__version__.py")
         if not args.no_changelog:
             run_git_command("git add CHANGELOG.md")
+        if not args.no_readme:
+            run_git_command("git add README.md")
         
         # Commit
         commit_message = f"Bump version from {current_version} to {new_version}"
