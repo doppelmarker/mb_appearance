@@ -5,6 +5,7 @@ import pytest
 from appearance.service import (
     backup,
     generate_n_random_characters,
+    list_characters,
     restore_from_backup,
     show_backuped_characters,
 )
@@ -116,8 +117,9 @@ def test_generate_multiple_characters(stub_profiles_file, stub_resource_files):
     # Verify file was created and has expected size
     assert stub_profiles_file.exists()
     content = stub_profiles_file.read_bytes()
-    # Each character adds 284 bytes to the header
-    expected_min_size = 16 + (5 * 284)
+    # Each character adds MIN_BYTES_AMOUNT_FOR_CHAR (89) bytes to the header (12 bytes)
+    from appearance.consts import MIN_BYTES_AMOUNT_FOR_CHAR
+    expected_min_size = 12 + (5 * MIN_BYTES_AMOUNT_FOR_CHAR)
     assert len(content) >= expected_min_size
 
 
@@ -210,3 +212,158 @@ def test_generate_characters_wse2_directory(tmp_path, stub_resource_files):
     # Directory and file should now exist
     assert wse2_dir.exists()
     assert profiles_file.exists()
+
+
+def test_list_characters_empty_file(tmp_path):
+    """Test listing characters from an empty profiles file."""
+    profiles_file = tmp_path / "profiles.dat"
+    # Create a file with just a header but no characters
+    header = b"\x00\x00\x00\x00"  # 4 bytes
+    header += b"\x00\x00\x00\x00"  # Character count = 0
+    header += b"\x00\x00\x00\x00"  # 4 more bytes
+    profiles_file.write_bytes(header)
+    
+    characters = list_characters(profiles_file_path=str(profiles_file))
+    assert characters == []
+
+
+def test_list_characters_single_character(stub_profiles_file, stub_resource_files):
+    """Test listing a single character."""
+    # Generate a single character using actual generation
+    generate_n_random_characters(
+        1,
+        profiles_file_path=stub_profiles_file,
+        header_file_path=stub_resource_files["header"],
+        common_char_file_path=stub_resource_files["common_char"]
+    )
+    
+    characters = list_characters(profiles_file_path=str(stub_profiles_file))
+    assert len(characters) == 1
+    assert characters[0]['index'] == 0
+    assert characters[0]['name'] == 'a'  # First character name
+    
+    # Verify valid sex and skin values (the key point of our fix)
+    assert characters[0]['sex'] in ['Male', 'Female']
+    assert characters[0]['skin'] in ['White', 'Light', 'Tan', 'Dark', 'Black']
+
+
+def test_list_characters_multiple_characters(stub_profiles_file, stub_resource_files):
+    """Test listing multiple characters with different attributes."""
+    # Generate multiple characters using actual generation
+    generate_n_random_characters(
+        3,
+        profiles_file_path=stub_profiles_file,
+        header_file_path=stub_resource_files["header"],
+        common_char_file_path=stub_resource_files["common_char"]
+    )
+    
+    characters = list_characters(profiles_file_path=str(stub_profiles_file))
+    assert len(characters) == 3
+    
+    # Check that all characters have valid attributes
+    expected_names = ['a', 'b', 'c']  # Character names cycle through alphabet
+    for i, char in enumerate(characters):
+        assert char['index'] == i
+        assert char['name'] == expected_names[i]
+        # Verify valid sex and skin values (the key point of our fix)
+        assert char['sex'] in ['Male', 'Female']
+        assert char['skin'] in ['White', 'Light', 'Tan', 'Dark', 'Black']
+
+
+def test_list_characters_wse2(stub_profiles_file, stub_resource_files):
+    """Test listing characters with WSE2 flag."""
+    # Generate a character using actual generation
+    generate_n_random_characters(
+        1,
+        profiles_file_path=stub_profiles_file,
+        header_file_path=stub_resource_files["header"],
+        common_char_file_path=stub_resource_files["common_char"]
+    )
+    
+    characters = list_characters(profiles_file_path=str(stub_profiles_file), wse2=True)
+    assert len(characters) == 1
+    assert characters[0]['name'] == 'a'  # First character name
+    # Verify valid sex and skin values (the key point of our fix)
+    assert characters[0]['sex'] in ['Male', 'Female']
+    assert characters[0]['skin'] in ['White', 'Light', 'Tan', 'Dark', 'Black']
+
+
+def test_list_characters_handles_errors(tmp_path, caplog):
+    """Test that list_characters handles errors gracefully."""
+    nonexistent_file = tmp_path / "nonexistent.dat"
+    
+    with caplog.at_level(logging.ERROR):
+        characters = list_characters(profiles_file_path=str(nonexistent_file))
+    
+    assert characters == []
+    assert "Failed to list characters" in caplog.text
+
+
+def test_generate_characters_valid_skin_values(stub_profiles_file, stub_resource_files):
+    """Test that all generated characters have valid skin values (bug #9 fix)."""
+    # Generate multiple characters
+    generate_n_random_characters(
+        20,  # Generate enough characters to test the bug
+        profiles_file_path=stub_profiles_file,
+        header_file_path=stub_resource_files["header"],
+        common_char_file_path=stub_resource_files["common_char"]
+    )
+    
+    # List the generated characters
+    characters = list_characters(profiles_file_path=str(stub_profiles_file))
+    
+    # Valid skin values are 0, 16, 32, 48, 64
+    valid_skin_names = ['White', 'Light', 'Tan', 'Dark', 'Black']
+    
+    # Verify all characters have valid skin values
+    assert len(characters) == 20
+    for i, char in enumerate(characters):
+        assert char['skin'] in valid_skin_names, f"Character {i} ({char['name']}) has invalid skin: {char['skin']}"
+        # Ensure no "Unknown (255)" or other invalid values
+        assert 'Unknown' not in char['skin'], f"Character {i} ({char['name']}) has corrupted skin value"
+
+
+def test_generate_characters_independent_data(stub_profiles_file, stub_resource_files):
+    """Test that each generated character has independent data (no data corruption)."""
+    # Generate multiple characters
+    num_chars = 10
+    generate_n_random_characters(
+        num_chars,
+        profiles_file_path=stub_profiles_file,
+        header_file_path=stub_resource_files["header"],
+        common_char_file_path=stub_resource_files["common_char"]
+    )
+    
+    # Read the raw file to check byte-level independence
+    content = stub_profiles_file.read_bytes()
+    header_size = 12  # Header is 12 bytes
+    char_size = 89  # Minimum character size
+    
+    # Import CHAR_OFFSETS to use proper offsets
+    from appearance.consts import CHAR_OFFSETS
+    
+    # Extract sex and skin bytes for each character
+    sex_values = []
+    skin_values = []
+    
+    for i in range(num_chars):
+        char_start = header_size + (i * char_size)
+        # Use the defined offsets
+        sex_offset = char_start + CHAR_OFFSETS["SEX"]
+        skin_offset = char_start + CHAR_OFFSETS["SKIN"]
+        
+        sex_values.append(content[sex_offset])
+        skin_values.append(content[skin_offset])
+    
+    # Verify all sex values are valid (0 or 1)
+    for i, sex in enumerate(sex_values):
+        assert sex in [0, 1], f"Character {i} has invalid sex value: {sex}"
+    
+    # Verify all skin values are valid (0, 16, 32, 48, 64)
+    valid_skin_bytes = [0, 16, 32, 48, 64]
+    for i, skin in enumerate(skin_values):
+        assert skin in valid_skin_bytes, f"Character {i} has invalid skin value: {skin}"
+    
+    # Verify we have some variation (not all characters identical)
+    # With 10 characters, we should see at least 2 different sex values or skin values
+    assert len(set(sex_values)) > 1 or len(set(skin_values)) > 1, "All characters appear to have identical attributes"

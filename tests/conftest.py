@@ -39,12 +39,32 @@ def stub_resource_files(tmp_path):
     """Create stub resource files for testing."""
     # Create a stub header file
     header_file = tmp_path / "header.dat"
-    header_file.write_bytes(b"\x00" * 16)  # 16 byte header
+    # Header: 4 bytes + char_count(4) + char_count(4) = 12 bytes total
+    header_data = b"\x00\x00\x00\x00"  # 4 bytes
+    header_data += b"\x00\x00\x00\x00"  # Character count = 0
+    header_data += b"\x00\x00\x00\x00"  # Character count = 0 (duplicate)
+    header_file.write_bytes(header_data)
 
-    # Create a stub common_char file
+    # Create a stub common_char file with a realistic character template
     common_char_file = tmp_path / "common_char.dat"
-    # 12 bytes offset + character data
-    common_char_file.write_bytes(b"\x00" * 12 + b"\x00" * 284)
+    # 12 bytes offset (header-like data)
+    char_data = b"\x00" * 12
+    
+    # Character template (starts at offset 12):
+    # name_length (1 byte) + padding (3 bytes) + name + rest of data
+    template = b"\x01"  # name length = 1
+    template += b"\x00\x00\x00"  # padding
+    template += b"a"  # name
+    template += b"\x00"  # sex (offset 5 from char start) = male
+    template += b"\x00\x00\x00"  # 3 bytes padding
+    template += b"\x00\x00\x00\x00"  # banner (offset 9) - 4 bytes
+    template += b"\x00"  # skin (offset 14 from char start) = white
+    template += b"\x00" * 6  # padding before appearance
+    template += b"\x00" * 11  # appearance bytes (offset 21)
+    # Pad to minimum character size (89 bytes)
+    template += b"\x00" * (89 - len(template))
+    
+    common_char_file.write_bytes(char_data + template)
 
     return {
         "header": header_file,
