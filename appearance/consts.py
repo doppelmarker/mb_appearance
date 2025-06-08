@@ -60,7 +60,10 @@ CHAR_OFFSETS = {
     "SEX": 5,
     "BANNER": 9,
     "SKIN": 14,
-    "APPEARANCE": 21,
+    "AGE": 15,           # 2 bytes, little endian
+    "HAIRSTYLE": 17,     # 1 byte
+    "HAIR_COLOR": 18,    # 1 byte
+    "APPEARANCE": 21,    # Random appearance bytes (legacy)
 }
 
 BANNER_BYTES_AMOUNT = 4

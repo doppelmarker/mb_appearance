@@ -198,24 +198,25 @@ def list_characters(profiles_file_path: str = None, wse2: bool = False) -> list:
             skin_map = {0: 'White', 16: 'Light', 32: 'Tan', 48: 'Dark', 64: 'Black'}
             char_info['skin'] = skin_map.get(skin_byte, f'Unknown ({skin_byte})')
             
-            # Get additional character properties from appearance data
-            appearance_offset = current_pos + CHAR_OFFSETS["APPEARANCE"]
-            appearance_data = profiles_data[appearance_offset:appearance_offset + APPEARANCE_BYTES_AMOUNT]
+            # Get Age, Hair style, and Hair color using fixed offsets
+            # Based on reverse-engineered format documentation and binary analysis
             
-            if len(appearance_data) >= 11:
-                # Age (first 2 bytes of appearance)
-                age = int.from_bytes(appearance_data[0:2], 'little')
-                char_info['age'] = age
-                
-                # Hair style (byte at offset 8 in appearance data)
-                if len(appearance_data) > 8:
-                    hair_style = appearance_data[8]
-                    char_info['hairstyle'] = f"{hair_style:02X}"
-                
-                # Hair color (byte at offset 9 in appearance data) 
-                if len(appearance_data) > 9:
-                    hair_color = appearance_data[9]
-                    char_info['hair_color'] = f"{hair_color:02X}"
+            # Age (2 bytes, little endian) at offset 15
+            age_offset = current_pos + CHAR_OFFSETS["AGE"]
+            if age_offset + 1 < len(profiles_data):
+                age_bytes = profiles_data[age_offset:age_offset + 2]
+                if len(age_bytes) == 2:
+                    char_info['age'] = int.from_bytes(age_bytes, 'little')
+            
+            # Hair style (1 byte) at offset 17
+            hair_offset = current_pos + CHAR_OFFSETS["HAIRSTYLE"]
+            if hair_offset < len(profiles_data):
+                char_info['hairstyle'] = str(profiles_data[hair_offset])
+            
+            # Hair color (1 byte) at offset 18
+            hair_color_offset = current_pos + CHAR_OFFSETS["HAIR_COLOR"]
+            if hair_color_offset < len(profiles_data):
+                char_info['hair_color'] = str(profiles_data[hair_color_offset])
             
             # Get banner data (4 bytes at offset 9)
             banner_offset = current_pos + CHAR_OFFSETS["BANNER"]

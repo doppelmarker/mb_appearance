@@ -424,3 +424,88 @@ def test_generate_characters_independent_data(stub_profiles_file, stub_resource_
     # Verify we have some variation (not all characters identical)
     # With 10 characters, we should see at least 2 different sex values or skin values
     assert len(set(sex_values)) > 1 or len(set(skin_values)) > 1, "All characters appear to have identical attributes"
+
+
+def test_list_characters_age_and_hair_parsing(stub_profiles_file, stub_resource_files):
+    """Test that Age and Hair values are correctly parsed from generated characters."""
+    # Generate multiple characters using actual generation
+    generate_n_random_characters(
+        5,
+        profiles_file_path=stub_profiles_file,
+        header_file_path=stub_resource_files["header"],
+        common_char_file_path=stub_resource_files["common_char"]
+    )
+    
+    characters = list_characters(profiles_file_path=str(stub_profiles_file))
+    assert len(characters) == 5
+    
+    # Verify Age and Hair parsing for all characters
+    for i, char in enumerate(characters):
+        # Age should be present and be a valid range (0-100)
+        assert 'age' in char, f"Character {i} ({char['name']}) missing age field"
+        age = char['age']
+        assert isinstance(age, int), f"Character {i} age should be integer, got {type(age)}"
+        assert 0 <= age <= 100, f"Character {i} age {age} outside valid range 0-100"
+        
+        # Hair style should be present and be a valid range (0-20)
+        assert 'hairstyle' in char, f"Character {i} ({char['name']}) missing hairstyle field"
+        hair = char['hairstyle']
+        assert isinstance(hair, str), f"Character {i} hairstyle should be string, got {type(hair)}"
+        hair_int = int(hair)  # Should be convertible to int
+        assert 0 <= hair_int <= 20, f"Character {i} hairstyle {hair_int} outside valid range 0-20"
+        
+        # Hair color should be present and be a valid range (0-15)
+        assert 'hair_color' in char, f"Character {i} ({char['name']}) missing hair_color field"
+        hair_color = char['hair_color']
+        assert isinstance(hair_color, str), f"Character {i} hair_color should be string, got {type(hair_color)}"
+        hair_color_int = int(hair_color)  # Should be convertible to int
+        assert 0 <= hair_color_int <= 15, f"Character {i} hair_color {hair_color_int} outside valid range 0-15"
+
+
+def test_list_characters_age_hair_correct_values_for_generated_chars(stub_profiles_file, stub_resource_files):
+    """Test that newly generated characters have expected Age and Hair values (minimum/first options)."""
+    # Generate characters using actual generation
+    generate_n_random_characters(
+        3,
+        profiles_file_path=stub_profiles_file,
+        header_file_path=stub_resource_files["header"],
+        common_char_file_path=stub_resource_files["common_char"]
+    )
+    
+    characters = list_characters(profiles_file_path=str(stub_profiles_file))
+    
+    # For newly generated characters, Age and Hair should be at minimum values (0)
+    # This matches the in-game behavior where characters appear bald with minimum age
+    for char in characters:
+        assert char['age'] == 0, f"Character {char['name']} should have age 0 (minimum), got {char['age']}"
+        assert char['hairstyle'] == '0', f"Character {char['name']} should have hairstyle 0 (first/bald), got {char['hairstyle']}"
+        assert char['hair_color'] == '0', f"Character {char['name']} should have hair_color 0 (first), got {char['hair_color']}"
+
+
+def test_list_characters_age_hair_no_random_bytes(stub_profiles_file, stub_resource_files):
+    """Test that Age and Hair values are not huge random numbers (regression test for bug fix)."""
+    # Generate characters using actual generation
+    generate_n_random_characters(
+        10,
+        profiles_file_path=stub_profiles_file,
+        header_file_path=stub_resource_files["header"],
+        common_char_file_path=stub_resource_files["common_char"]
+    )
+    
+    characters = list_characters(profiles_file_path=str(stub_profiles_file))
+    
+    # Before the fix, Age was parsed from random bytes giving values like 17164, 61416
+    # After the fix, Age should be reasonable values (0-100)
+    for char in characters:
+        age = char['age']
+        assert age < 1000, f"Character {char['name']} has unreasonably high age {age} (indicates random byte parsing)"
+        
+        # Hair style was parsed as hex from random bytes giving values like "13", "82" 
+        # After the fix, Hair should be decimal values 0-20
+        hair = int(char['hairstyle'])
+        assert hair < 100, f"Character {char['name']} has unreasonably high hairstyle {hair} (indicates random byte parsing)"
+        
+        # Hair color was parsed as hex from random bytes giving values like "98", "B5"
+        # After the fix, Hair color should be decimal values 0-15
+        hair_color = int(char['hair_color'])
+        assert hair_color < 100, f"Character {char['name']} has unreasonably high hair_color {hair_color} (indicates random byte parsing)"
