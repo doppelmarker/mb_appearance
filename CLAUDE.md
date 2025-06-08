@@ -174,15 +174,15 @@ Character Block (89 bytes):
 
 ```
 Byte 16 (shared):
-├── Bits 0-3: Unused/reserved
-├── Bits 4-5: Hair Color (0-3, maps to color ranges)
+├── Bits 0-5: Hair Color (6 bits, 0-63 full range)
 └── Bits 6-7: Age low 2 bits
 
 Byte 17:
-└── Bits 0-7: Age high 8 bits
+├── Bits 0-3: Age high 4 bits (Age uses 6 bits total)
+└── Bits 4-7: Unused/reserved
 
-Age formula: age = ((byte_16 & 0xC0) >> 6) + (byte_17 << 2)
-Hair Color formula: hair_color = (byte_16 & 0x30) >> 4
+Age formula: age = ((byte_16 & 0xC0) >> 6) + ((byte_17 & 0x0F) << 2)
+Hair Color formula: hair_color = byte_16 & 0x3F
 ```
 
 ### Critical Constants (from consts.py)

@@ -210,17 +210,17 @@ def list_characters(profiles_file_path: str = None, wse2: bool = False) -> list:
                 byte_16 = profiles_data[age_hair_offset]
                 byte_17 = profiles_data[age_hair_offset + 1]
                 
-                # Hair Color: bits 4-5 of byte 16
-                # Values 0-3 map to color ranges: 0x00-0x0F, 0x10-0x1F, 0x20-0x2F, 0x30-0x3F
-                hair_color_raw = (byte_16 & 0x30) >> 4  # Extract bits 4-5 (0-3)
+                # Hair Color: bits 0-5 of byte 16 (6 bits, 0-63)
+                # Full range: 0x00-0x3F (0-63 decimal)
+                hair_color_raw = byte_16 & 0x3F  # Extract bits 0-5 (0-63)
                 char_info['hair_color'] = str(hair_color_raw)
                 
-                # Age: Encoded across bytes 16-17 with bit-packing
-                # Byte 16 bits 6-7 contain low 2 bits of age (shifted by 6)
-                # Byte 17 contains high bits of age (shifted by 2 positions)
-                # Example: Age 1984 = 0x07C0 stored as byte16=0xC0, byte17=0x07
-                age_low_2bits = (byte_16 & 0xC0) >> 6  # Extract bits 6-7
-                age_value = age_low_2bits + (byte_17 << 2)
+                # Age: Encoded across bytes 16-17 with bit-packing (6 bits total)
+                # Byte 16 bits 6-7 contain low 2 bits of age
+                # Byte 17 bits 0-3 contain high 4 bits of age (total 6 bits = 0-63)
+                age_low_2bits = (byte_16 & 0xC0) >> 6    # Extract bits 6-7 (0-3)
+                age_high_4bits = (byte_17 & 0x0F) << 2   # Extract bits 0-3, shift left 2
+                age_value = age_low_2bits + age_high_4bits
                 char_info['age'] = age_value
             
             # Get banner data (4 bytes at offset 9)
