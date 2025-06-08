@@ -70,10 +70,27 @@ def main():
             arg_parser.parser.error("Failed to delete character!")
     
     if list_chars:
+        profiles_path = get_profiles_file_path(wse2)
         characters = list_characters(wse2=wse2)
         if not characters:
-            logging.info("No characters found or unable to read profiles file.")
+            logging.info("No characters found or unable to read %s.", profiles_path)
         else:
-            logging.info("Characters in profiles.dat:")
+            logging.info("Characters in %s:", profiles_path)
             for char in characters:
-                logging.info(f"{char['index'] + 1}. {char['name']} ({char['sex']}, {char['skin']})")
+                # Build character info string with available properties
+                info_parts = [char['sex'], char['skin']]
+                
+                if 'age' in char:
+                    info_parts.append(f"Age:{char['age']}")
+                
+                if 'hairstyle' in char:
+                    info_parts.append(f"Hair:{char['hairstyle']}")
+                
+                if 'hair_color' in char:
+                    info_parts.append(f"HairColor:{char['hair_color']}")
+                
+                if 'banner' in char:
+                    info_parts.append(f"Banner:{char['banner']}")
+                
+                info_str = ", ".join(info_parts)
+                logging.info(f"{char['index'] + 1}. {char['name']} ({info_str})")

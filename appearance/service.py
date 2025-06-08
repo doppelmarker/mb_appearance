@@ -134,7 +134,7 @@ def generate_n_random_characters(
         profiles_file_path = get_profiles_file_path(wse2)
 
     write_profiles(profiles_file_path, header)
-    logger.info("Successfully generated %d random characters!", n)
+    logger.info("Successfully generated %d random characters in %s!", n, profiles_file_path)
 
 
 def list_characters(profiles_file_path: str = None, wse2: bool = False) -> list:
@@ -188,6 +188,35 @@ def list_characters(profiles_file_path: str = None, wse2: bool = False) -> list:
             skin_byte = profiles_data[skin_offset]
             skin_map = {0: 'White', 16: 'Light', 32: 'Tan', 48: 'Dark', 64: 'Black'}
             char_info['skin'] = skin_map.get(skin_byte, f'Unknown ({skin_byte})')
+            
+            # Get additional character properties from appearance data
+            appearance_offset = current_pos + CHAR_OFFSETS["APPEARANCE"]
+            appearance_data = profiles_data[appearance_offset:appearance_offset + APPEARANCE_BYTES_AMOUNT]
+            
+            if len(appearance_data) >= 11:
+                # Age (first 2 bytes of appearance)
+                age = int.from_bytes(appearance_data[0:2], 'little')
+                char_info['age'] = age
+                
+                # Hair style (byte at offset 8 in appearance data)
+                if len(appearance_data) > 8:
+                    hair_style = appearance_data[8]
+                    char_info['hairstyle'] = f"{hair_style:02X}"
+                
+                # Hair color (byte at offset 9 in appearance data) 
+                if len(appearance_data) > 9:
+                    hair_color = appearance_data[9]
+                    char_info['hair_color'] = f"{hair_color:02X}"
+            
+            # Get banner data (4 bytes at offset 9)
+            banner_offset = current_pos + CHAR_OFFSETS["BANNER"]
+            banner_bytes = profiles_data[banner_offset:banner_offset + 4]
+            if len(banner_bytes) >= 4:
+                if banner_bytes == b'\xFF\xFF\xFF\xFF':
+                    char_info['banner'] = "Current Nation"
+                else:
+                    banner_value = int.from_bytes(banner_bytes, 'little')
+                    char_info['banner'] = f"{banner_value:08X}"
             
             # Calculate character size
             char_size = 4 + name_length + (85 - name_length)
