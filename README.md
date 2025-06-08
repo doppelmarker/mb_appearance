@@ -8,7 +8,7 @@ Install it with:
 ## Usage
 
     usage: mb-app [-h] [-v] [--verbose] [--quiet] [-b BACKUP_TO] [-s]
-                  [-r RESTORE_FROM] [-g N] [-d INDEX_OR_NAME] [--wse2]
+                  [-r RESTORE_FROM] [-g N] [-d INDEX_OR_NAME] [-l] [--wse2]
 
     Python util for Mount&Blade characters file manipulation.
 
@@ -24,6 +24,7 @@ Install it with:
       -g N, --gen N                             Generate N random characters.
       -d INDEX_OR_NAME, --delete INDEX_OR_NAME  Delete a character by index or
                                                 name.
+      -l, --list                                List all characters.
       --wse2                                    Use WSE2 (Warband Script Enhancer
                                                 2) profiles directory.
 
