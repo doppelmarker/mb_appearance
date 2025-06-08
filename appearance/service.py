@@ -20,6 +20,7 @@ from appearance.helpers import (
     read_profiles,
     write_profiles,
 )
+from appearance.face_code import extract_face_code, apply_face_code, format_face_code
 
 logger = logging.getLogger(__name__)
 
@@ -232,6 +233,14 @@ def list_characters(profiles_file_path: str = None, wse2: bool = False) -> list:
                 else:
                     banner_value = int.from_bytes(banner_bytes, 'little')
                     char_info['banner'] = f"{banner_value:08X}"
+            
+            # Extract face code
+            try:
+                face_code = extract_face_code(profiles_data, current_pos)
+                char_info['face_code'] = format_face_code(face_code, include_prefix=False)
+            except Exception as e:
+                logger.debug(f"Failed to extract face code for character {i}: {e}")
+                char_info['face_code'] = None
             
             # Calculate character size
             char_size = 4 + name_length + (85 - name_length)

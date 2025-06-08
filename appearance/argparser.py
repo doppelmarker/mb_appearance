@@ -43,6 +43,11 @@ class ArgParser:
             action="store_true"
         )
         self.parser.add_argument(
+            "--show-face-codes",
+            help="Show face codes when listing characters.",
+            action="store_true"
+        )
+        self.parser.add_argument(
             "-g",
             "--gen",
             help="Generate N random characters.",

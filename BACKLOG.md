@@ -2,6 +2,98 @@
 
 This backlog follows Claude Code best practices for task planning and project improvement.
 
+**IMPORTANT**: This project serves as the foundation for the warband-face-editor (https://github.com/doppelmarker/warband-face-editor), a web-based 3D character face customization tool. Features are prioritized based on their importance for enabling web-based face editing functionality.
+
+## NEW: Face Code Support
+**Priority: CRITICAL**
+**Goal: Enable parsing and generation of Mount & Blade Warband's 64-character hexadecimal face codes**
+
+### Background:
+Mount & Blade Warband uses 64-character face codes (e.g., "0x000000003f9c4a40...") that encode:
+- 8 morph targets (3 bits each) for face shape
+- Hair index (6 bits)
+- Beard index (6 bits)
+- Age (6 bits)
+- Skin tone (6 bits)
+
+### Tasks:
+- [ ] Add face code parsing module:
+  - [ ] Parse 64-char hex string to structured data
+  - [ ] Extract individual morph values (8 morphs)
+  - [ ] Extract hair, beard, age, skin parameters
+  - [ ] Validate face code format
+- [ ] Add face code generation:
+  - [ ] Convert structured data to hex code
+  - [ ] Ensure proper bit packing
+  - [ ] Generate valid 64-char codes
+- [ ] Integrate with character data:
+  - [ ] Map face codes to binary appearance bytes
+  - [ ] Support face code in import/export
+  - [ ] Add --face-code flag to character operations
+- [ ] Add comprehensive tests:
+  - [ ] Test known face codes from game
+  - [ ] Round-trip conversion tests
+  - [ ] Edge case validation
+
+### Acceptance Criteria:
+- Can parse any valid Warband face code
+- Can generate face codes from character data
+- Face codes integrate with existing features
+- Full documentation of face code format
+
+## NEW: Library API Exposure
+**Priority: CRITICAL**
+**Goal: Make mb-app usable as a Python library for web service integration**
+
+### Tasks:
+- [ ] Create public API module (`appearance.api`):
+  - [ ] Character class with properties
+  - [ ] ProfilesManager for file operations
+  - [ ] FaceCodeParser for face code handling
+  - [ ] Clean separation from CLI code
+- [ ] Add programmatic interfaces:
+  - [ ] `load_profiles()` - Load profiles data
+  - [ ] `get_character()` - Get single character
+  - [ ] `update_character()` - Modify character
+  - [ ] `parse_face_code()` - Parse face codes
+  - [ ] `generate_face_code()` - Create face codes
+- [ ] Add async support for web integration:
+  - [ ] Async file operations
+  - [ ] Thread-safe character access
+  - [ ] Concurrent operation support
+- [ ] Create API documentation:
+  - [ ] Sphinx docs setup
+  - [ ] API reference
+  - [ ] Usage examples
+  - [ ] Web integration guide
+
+### Acceptance Criteria:
+- Can import and use mb-app in Python code
+- Clean API without CLI dependencies
+- Thread-safe for web usage
+- Comprehensive API documentation
+
+## 7. Import/Export Feature (UPDATED)
+**Priority: CRITICAL**
+**Goal: Enable character data exchange with web-based face editor**
+
+### Updated Tasks:
+- [ ] Add JSON export with face codes:
+  - [ ] Include 64-char face code in export
+  - [ ] Structure suitable for web API
+  - [ ] Support single and bulk export
+  - [ ] Include all morph/appearance data
+- [ ] Add JSON import with validation:
+  - [ ] Import from web editor format
+  - [ ] Validate face codes
+  - [ ] Handle partial data updates
+  - [ ] Preserve non-appearance data
+- [ ] Add REST API format support:
+  - [ ] Export format matching web API needs
+  - [ ] Structured morph target data
+  - [ ] Include metadata (version, timestamp)
+- [ ] Original tasks remain...
+
 ## 1. Project Structure Improvements
 **Priority: Medium**
 **Goal: Align with Python packaging best practices**
@@ -83,7 +175,206 @@ This backlog follows Claude Code best practices for task planning and project im
 - Version bumping automated
 - Workflows use Makefile commands for consistency
 
-## 5. Pre-commit Hooks
+## 5. Character Editing Feature
+**Priority: High**
+**Goal: Add ability to modify existing characters without deleting/recreating**
+
+### Tasks:
+- [ ] Add `--edit` flag to argparser:
+  - [ ] Support character index or name as identifier
+  - [ ] Add sub-options for each editable attribute
+  - [ ] Allow multiple edits in one command
+- [ ] Implement editing logic in `service.py`:
+  - [ ] `edit_character()` - Main editing function
+  - [ ] Support name changes
+  - [ ] Support sex changes
+  - [ ] Support skin color changes
+  - [ ] Support age modifications
+  - [ ] Support hair style/color changes
+  - [ ] Support appearance bytes editing
+- [ ] Add validation for edit operations:
+  - [ ] Ensure valid attribute values
+  - [ ] Prevent duplicate names
+  - [ ] Validate character exists
+- [ ] Add comprehensive tests:
+  - [ ] Test each attribute modification
+  - [ ] Test multiple edits at once
+  - [ ] Test edge cases
+- [ ] Update documentation with examples
+
+### Acceptance Criteria:
+- Can edit any character attribute
+- Changes persist correctly in binary file
+- Validation prevents invalid values
+- Clear error messages for invalid operations
+- Well-documented usage examples
+
+## 6. Data Safety Features
+**Priority: High**
+**Goal: Prevent data loss and add recovery options**
+
+### Tasks:
+- [ ] Add automatic backup before destructive operations:
+  - [ ] Before delete operations
+  - [ ] Before generate operations
+  - [ ] Before edit operations
+  - [ ] Configurable via --no-auto-backup flag
+- [ ] Implement dry-run mode:
+  - [ ] Add --dry-run flag to all operations
+  - [ ] Show what would happen without making changes
+  - [ ] Display affected characters
+- [ ] Add data integrity validation:
+  - [ ] `--verify` command to check file integrity
+  - [ ] Validate header matches character count
+  - [ ] Check for corrupted character data
+  - [ ] Report issues found
+- [ ] Implement undo functionality:
+  - [ ] `--undo` command to revert last operation
+  - [ ] Store operation history in ~/.mb_app/history/
+  - [ ] Limit history to last N operations
+- [ ] Add backup rotation:
+  - [ ] Keep last N automatic backups
+  - [ ] Timestamp-based naming
+  - [ ] Cleanup old backups
+
+### Acceptance Criteria:
+- Never lose data without user explicitly choosing to
+- Can preview any operation before executing
+- Can detect and report corruption
+- Can undo recent operations
+- Automatic backup management
+
+## 7. Import/Export Feature
+**Priority: High**
+**Goal: Enable character sharing and external tool integration**
+
+### Tasks:
+- [ ] Add export functionality:
+  - [ ] `--export` flag for single character
+  - [ ] `--export-all` flag for all characters
+  - [ ] Support JSON format
+  - [ ] Support CSV format
+  - [ ] Include all character attributes
+- [ ] Add import functionality:
+  - [ ] `--import` flag to add characters
+  - [ ] Support same formats as export
+  - [ ] Handle name conflicts
+  - [ ] Validate imported data
+- [ ] Implement character templates:
+  - [ ] Save character as template
+  - [ ] Generate from template
+  - [ ] Share templates between users
+- [ ] Add merge functionality:
+  - [ ] Merge characters from another profiles.dat
+  - [ ] Handle duplicates intelligently
+  - [ ] Preserve character order options
+
+### Acceptance Criteria:
+- Can export/import in standard formats
+- Data round-trips without loss
+- Templates work for appearance presets
+- Can merge profiles from multiple sources
+- Clear handling of conflicts
+
+## 8. Search and Filter Feature
+**Priority: Medium**
+**Goal: Help users find specific characters quickly**
+
+### Tasks:
+- [ ] Add search functionality to list command:
+  - [ ] `--search` flag with pattern support
+  - [ ] Support wildcards (*, ?)
+  - [ ] Case-insensitive by default
+- [ ] Add filter options:
+  - [ ] `--filter` flag with attribute=value syntax
+  - [ ] Support multiple filters
+  - [ ] Filter by sex, skin, age range, etc.
+- [ ] Add sort options:
+  - [ ] `--sort` flag (name, age, index)
+  - [ ] Ascending/descending order
+- [ ] Add detailed inspection:
+  - [ ] `--inspect` flag for detailed view
+  - [ ] Show all attributes in readable format
+  - [ ] Show raw bytes optionally
+- [ ] Add statistics command:
+  - [ ] `--stats` to show character distribution
+  - [ ] Count by sex, skin, age ranges
+  - [ ] Show name patterns
+
+### Acceptance Criteria:
+- Can quickly find characters by name
+- Can filter by any attribute
+- Can sort list output
+- Can inspect character details
+- Statistics provide useful insights
+
+## 9. Batch Operations
+**Priority: Medium**
+**Goal: Efficiently handle multiple character operations**
+
+### Tasks:
+- [ ] Enhance delete to support multiple targets:
+  - [ ] Accept comma-separated indices
+  - [ ] Accept index ranges (1-5)
+  - [ ] Mix names and indices
+- [ ] Add batch edit functionality:
+  - [ ] `--edit-all` with filters
+  - [ ] Apply same change to multiple characters
+  - [ ] Support conditional edits
+- [ ] Add duplicate functionality:
+  - [ ] `--duplicate` flag with count
+  - [ ] Auto-generate variant names
+  - [ ] Optionally vary attributes
+- [ ] Add reorder functionality:
+  - [ ] `--reorder` with new order
+  - [ ] Move characters to specific positions
+  - [ ] Sort by attributes
+- [ ] Add batch rename:
+  - [ ] `--rename-pattern` with templates
+  - [ ] Support {index}, {name}, {attribute} placeholders
+  - [ ] Preview before applying
+
+### Acceptance Criteria:
+- Can operate on multiple characters efficiently
+- Batch operations have safety checks
+- Clear preview of what will happen
+- Undo works for batch operations
+- Pattern-based operations are flexible
+
+## 10. Character Generation Improvements
+**Priority: Medium**
+**Goal: More control over random character creation**
+
+### Tasks:
+- [ ] Add constrained generation:
+  - [ ] `--sex`, `--skin`, `--age-range` constraints
+  - [ ] Apply to all generated characters
+  - [ ] Mix constraints with randomization
+- [ ] Add name generation options:
+  - [ ] `--names-from` file option
+  - [ ] `--name-pattern` with templates
+  - [ ] Culture-specific name lists
+- [ ] Add appearance presets:
+  - [ ] `--preset` option (warrior, merchant, noble)
+  - [ ] Define presets in config file
+  - [ ] Combine presets with randomization
+- [ ] Add family generation:
+  - [ ] `--family` flag to generate related characters
+  - [ ] Similar appearance bytes
+  - [ ] Appropriate age distribution
+- [ ] Add weighted randomization:
+  - [ ] Config file for probability weights
+  - [ ] More realistic distributions
+  - [ ] User-defined weight profiles
+
+### Acceptance Criteria:
+- Can generate characters matching criteria
+- Name generation is flexible
+- Presets speed up common use cases
+- Family generation creates believable groups
+- Randomization can be tuned
+
+## 11. Pre-commit Hooks
 **Priority: Low**
 **Goal: Ensure code quality before commits**
 
@@ -107,30 +398,128 @@ This backlog follows Claude Code best practices for task planning and project im
 - Easy setup for contributors
 - CI validates pre-commit compliance
 
-## Execution Order
+## 12. Interactive Mode
+**Priority: Low**
+**Goal: Provide user-friendly interface for non-technical users**
 
-1. **Phase 1 - Quality** (Week 1)
-   - Basic test structure setup
-   - Complete unit tests
+### Tasks:
+- [ ] Add `--interactive` flag:
+  - [ ] Launch menu-driven interface
+  - [ ] Use simple prompts library
+  - [ ] Support all major operations
+- [ ] Implement main menu:
+  - [ ] List characters
+  - [ ] Generate characters
+  - [ ] Edit characters
+  - [ ] Delete characters
+  - [ ] Backup/Restore
+  - [ ] Import/Export
+- [ ] Add operation wizards:
+  - [ ] Guide through complex operations
+  - [ ] Validate input at each step
+  - [ ] Show previews before confirming
+- [ ] Add help system:
+  - [ ] Context-sensitive help
+  - [ ] Examples for each operation
+  - [ ] Tips and best practices
 
-2. **Phase 2 - Structure** (Week 2)
-   - Project structure improvements
-   - Package modernization
+### Acceptance Criteria:
+- Complete operations without memorizing flags
+- Clear navigation and prompts
+- Validation prevents errors
+- Help is always available
+- Works on all platforms
 
-3. **Phase 3 - Automation** (Week 3)
-   - Add Makefile
-   - Pre-commit hooks
-   - GitHub workflows
-   - CI/CD pipeline
+## 13. Performance Optimizations
+**Priority: High (for web editor)**
+**Goal: Handle real-time web operations with minimal latency**
+
+### Tasks:
+- [ ] Implement streaming file operations:
+  - [ ] Don't load entire file for list/search
+  - [ ] Process characters individually
+  - [ ] Reduce memory footprint
+- [ ] Add indexing for faster operations:
+  - [ ] Create index file for quick lookups
+  - [ ] Update index on modifications
+  - [ ] Rebuild index command
+- [ ] Optimize character parsing:
+  - [ ] Lazy parsing of attributes
+  - [ ] Cache parsed data
+  - [ ] Batch read operations
+- [ ] Add progress indicators:
+  - [ ] Show progress for long operations
+  - [ ] ETA for batch operations
+  - [ ] Cancelable operations
+
+### Acceptance Criteria:
+- Can handle 1000+ characters smoothly
+- Memory usage stays reasonable
+- Operations show progress
+- Performance metrics documented
+- No regression in functionality
+
+## Execution Order (Prioritized for warband-face-editor)
+
+### Phase 1 - Critical Web Editor Foundation (Immediate Priority)
+1. **Face Code Support** (NEW) - Essential for Warband face editing
+2. **Library API Exposure** (NEW) - Enable Python library usage for web service
+3. **Import/Export** (#7 UPDATED) - JSON/API format with face codes
+4. **Character Editing** (#5) - Core functionality for modifying faces
+
+### Phase 2 - Data Integrity & Performance (Short-term)
+1. **Data Safety Features** (#6) - Critical for web editor reliability
+2. **Performance Optimizations** (#13) - Important for real-time web response
+3. **Search and Filter** (#8) - Character selection for web UI
+
+### Phase 3 - Enhanced Functionality (Medium-term)
+1. **Batch Operations** (#9) - Bulk editing from web interface
+2. **Character Generation Improvements** (#10) - Test data with face codes
+3. **Project Structure Improvements** (#1) - Clean library packaging
+
+### Phase 4 - Development Infrastructure (Lower Priority)
+1. **GitHub Workflows** (#4) - Automated testing and releases
+2. **Add Makefile** (#3) - Developer convenience
+3. **Pre-commit Hooks** (#11) - Code quality
+4. **Interactive Mode** (#12) - Less relevant for web-based editor
 
 ## Success Metrics
 
+### Already Achieved
 - [x] Zero print statements in codebase (✅ Completed)
 - [x] >80% test coverage (✅ Achieved 99.52% coverage)
+- [x] Character deletion feature (✅ v0.1.0)
+- [x] Character listing feature (✅ v0.2.0)
+- [x] Fix sample reuse bug (✅ v0.1.2)
+- [x] Fix directory creation (✅ v0.1.1)
+
+### Web Editor Foundation Goals (NEW)
+- [ ] Face code parsing/generation (64-char hex)
+- [ ] Python library API for web integration
+- [ ] JSON export with face codes and morph data
+- [ ] Thread-safe character operations
+- [ ] REST API-compatible data formats
+
+### Core Feature Goals
+- [ ] Character editing without delete/recreate
+- [ ] Auto-backup before destructive operations
+- [ ] JSON export/import functionality
+- [ ] Character search and filtering
+- [ ] Batch operations support
+
+### Infrastructure Goals
 - [ ] All CI checks passing
 - [ ] Automated release process
 - [ ] Clean pip install from PyPI
 - [ ] Contributing guide complete
+- [ ] Makefile for common tasks
+
+### User Experience Goals
+- [ ] Dry-run mode for all operations
+- [ ] Undo functionality
+- [ ] Interactive mode for beginners
+- [ ] Comprehensive --help documentation
+- [ ] Example usage in README
 
 ## Notes for Claude Code
 
@@ -140,3 +529,6 @@ When implementing these changes:
 3. Maintain backward compatibility
 4. Document breaking changes
 5. Create atomic commits for each task
+6. **Consider web editor integration** - Features should be designed with Python library usage in mind
+7. **Prioritize face code support** - This is critical for the warband-face-editor project
+8. **Design for async/thread-safety** - Web services need concurrent access

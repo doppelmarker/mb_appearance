@@ -31,6 +31,7 @@ def main():
     delete: str = cli_args.delete
     list_chars: bool = cli_args.list
     wse2: bool = cli_args.wse2
+    show_face_codes: bool = cli_args.show_face_codes
 
     if not (backup_to or restore_from or generate or show_backups or delete or list_chars):
         arg_parser.parser.error("No action requested!")
@@ -93,4 +94,10 @@ def main():
                     info_parts.append(f"Banner:{char['banner']}")
                 
                 info_str = ", ".join(info_parts)
-                logging.info(f"{char['index'] + 1}. {char['name']} ({info_str})")
+                
+                # Add face code if requested
+                if show_face_codes and 'face_code' in char and char['face_code']:
+                    logging.info(f"{char['index'] + 1}. {char['name']} ({info_str})")
+                    logging.info(f"   Face Code: {char['face_code']}")
+                else:
+                    logging.info(f"{char['index'] + 1}. {char['name']} ({info_str})")
