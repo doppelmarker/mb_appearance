@@ -155,7 +155,16 @@ def list_characters(profiles_file_path: str = None, wse2: bool = False) -> list:
         profiles_data = read_profiles(profiles_file_path)
         
         # Extract header and character count
-        char_count = int.from_bytes(profiles_data[4:8], 'little')
+        # Read both count fields to handle corruption
+        char_count1 = int.from_bytes(profiles_data[4:8], 'little')
+        char_count2 = int.from_bytes(profiles_data[8:12], 'little')
+        
+        # Use the larger count if they differ (handles corruption)
+        if char_count1 != char_count2:
+            logger.warning(f"Character count mismatch: offset 4-7={char_count1}, offset 8-11={char_count2}. Using larger value.")
+            char_count = max(char_count1, char_count2)
+        else:
+            char_count = char_count1
         
         # Parse all characters
         characters = []

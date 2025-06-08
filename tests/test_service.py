@@ -330,6 +330,32 @@ def test_list_characters_handles_errors(tmp_path, caplog):
     assert "Failed to list characters" in caplog.text
 
 
+def test_list_characters_corrupted_header(tmp_path, stub_resource_files, caplog):
+    """Test that list_characters handles corrupted header counts."""
+    # Create a file with 3 characters
+    profiles_file = tmp_path / "corrupted.dat"
+    generate_n_random_characters(
+        3,
+        profiles_file_path=str(profiles_file),
+        header_file_path=stub_resource_files["header"],
+        common_char_file_path=stub_resource_files["common_char"]
+    )
+    
+    # Corrupt the first count field (offset 4-7) to show fewer characters
+    data = profiles_file.read_bytes()
+    corrupted_data = data[:4] + (1).to_bytes(4, 'little') + data[8:]  # Change first count to 1
+    profiles_file.write_bytes(corrupted_data)
+    
+    # List characters should use the larger count and log warning
+    with caplog.at_level(logging.WARNING):
+        characters = list_characters(profiles_file_path=str(profiles_file))
+    
+    # Should return all 3 characters despite corruption
+    assert len(characters) == 3
+    assert "Character count mismatch" in caplog.text
+    assert "offset 4-7=1, offset 8-11=3" in caplog.text
+
+
 def test_generate_characters_valid_skin_values(stub_profiles_file, stub_resource_files):
     """Test that all generated characters have valid skin values (bug #9 fix)."""
     # Generate multiple characters
