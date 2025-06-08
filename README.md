@@ -7,8 +7,9 @@ Install it with:
 
 ## Usage
 
-    usage: mb-app [-h] [-v] [--verbose] [--quiet] [-l] [-g N] [-d INDEX_OR_NAME]
-                  [-b BACKUP_TO] [-s] [-r RESTORE_FROM] [--wse2]
+    usage: mb-app [-h] [-v] [--verbose] [--quiet] [-l] [--show-face-codes] [-g N]
+                  [-d INDEX_OR_NAME] [-b BACKUP_TO] [-s] [-r RESTORE_FROM]
+                  [--wse2]
 
     Python util for Mount&Blade characters file manipulation.
 
@@ -18,6 +19,8 @@ Install it with:
       --verbose                                 Output verbose status messages.
       --quiet                                   Suppress all output except errors.
       -l, --list                                List all characters.
+      --show-face-codes                         Show face codes when listing
+                                                characters.
       -g N, --gen N                             Generate N random characters.
       -d INDEX_OR_NAME, --delete INDEX_OR_NAME  Delete a character by index or
                                                 name.

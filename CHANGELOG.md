@@ -13,6 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.4.0] - 2025-06-08
+
+
+### Added
+
+### Changed
+
+### Fixed
+
 ## [0.3.5] - 2025-06-08
 
 ### Fixed
@@ -143,7 +152,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Automatic Mount & Blade directory detection
 - Binary file manipulation for character appearance
 
-[Unreleased]: https://github.com/doppelmarker/mb_appearance/compare/v0.3.5...HEAD
+[Unreleased]: https://github.com/doppelmarker/mb_appearance/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/doppelmarker/mb_appearance/compare/v0.3.5...v0.4.0
 [0.3.5]: https://github.com/doppelmarker/mb_appearance/compare/v0.3.4...v0.3.5
 [0.3.4]: https://github.com/doppelmarker/mb_appearance/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/doppelmarker/mb_appearance/compare/v0.3.2...v0.3.3
