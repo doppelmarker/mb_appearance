@@ -161,21 +161,41 @@ Character Block (89 bytes):
 ├── Offset 4: First character of name
 ├── Offset 5: SEX byte (0=Male, 1=Female) - OVERLAPS WITH NAME!
 ├── Offset 6+: Rest of name data
-├── Offset 9-12: Banner data (4 bytes)
+├── Offset 9-12: Banner data (4 bytes, 0xFFFFFFFF = Current Nation)
+├── Offset 13: HAIRSTYLE byte (0+ = hair type/style options)
 ├── Offset 14: SKIN byte (0=White, 16=Light, 32=Tan, 48=Dark, 64=Black)
+├── Offset 16-17: AGE + HAIR COLOR (bit-packed, see below)
 ├── Offset 21-31: Appearance bytes (11 bytes of random character features)
 └── Padding to 89 bytes minimum
+```
+
+### Bit-Packed Age and Hair Color Format
+**CRITICAL**: Age and Hair Color share bytes 16-17 using bit-packing:
+
+```
+Byte 16 (shared):
+├── Bits 0-3: Unused/reserved
+├── Bits 4-5: Hair Color (0-3, maps to color ranges)
+└── Bits 6-7: Age low 2 bits
+
+Byte 17:
+└── Bits 0-7: Age high 8 bits
+
+Age formula: age = ((byte_16 & 0xC0) >> 6) + (byte_17 << 2)
+Hair Color formula: hair_color = (byte_16 & 0x30) >> 4
 ```
 
 ### Critical Constants (from consts.py)
 ```python
 CHAR_OFFSETS = {
-    "NAME_LENGTH": 0,    # Offset to name length byte
-    "NAME": 4,           # Offset to name start
-    "SEX": 5,            # Offset to sex byte (overlaps with name!)
-    "BANNER": 9,         # Offset to banner (4 bytes)
-    "SKIN": 14,          # Offset to skin byte
-    "APPEARANCE": 21,    # Offset to appearance bytes (11 bytes)
+    "NAME_LENGTH": 0,         # Offset to name length byte
+    "NAME": 4,                # Offset to name start
+    "SEX": 5,                 # Offset to sex byte (overlaps with name!)
+    "BANNER": 9,              # Offset to banner (4 bytes)
+    "HAIRSTYLE": 13,          # Offset to hair style (1 byte)
+    "SKIN": 14,               # Offset to skin byte
+    "AGE_HAIR_COLOR": 16,     # Offset to bit-packed age/hair color (2 bytes)
+    "APPEARANCE": 21,         # Offset to appearance bytes (11 bytes)
 }
 ```
 
@@ -218,7 +238,22 @@ char_data = b"\x04\x00\x00\x00Test\x00..."  # Fragile and error-prone
 ### Valid Values
 - **Sex**: 0 (Male) or 1 (Female)
 - **Skin**: 0 (White), 16 (Light), 32 (Tan), 48 (Dark), 64 (Black)
+- **Hair Style**: 0+ (various hair styles, 0 typically = bald/minimal)
+- **Hair Color**: 0-3 (bit-packed in byte 16, bits 4-5)
+- **Age**: 0-63 typical range (10-bit value split across bytes 16-17)
+- **Banner**: 0xFFFFFFFF = Current Nation, other values = specific banners
 - **Any other values indicate data corruption**
+
+### Reverse Engineering Notes
+The actual Mount & Blade binary format was reverse-engineered through:
+1. Analysis of the `resources/mb_characters_bytes.png` diagram
+2. Binary comparison of game-generated files with different character settings
+3. Bit-level analysis revealing the packed Age/Hair Color format in bytes 16-17
+
+Key discoveries:
+- Age and Hair Color share byte 16 through bit-packing
+- Character offsets 13 (hair style) and 16-17 (age/hair color) were previously unknown
+- The format uses efficient bit-packing to store multiple values in shared bytes
 
 ## Commit Guidelines
 

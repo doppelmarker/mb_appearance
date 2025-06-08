@@ -59,10 +59,9 @@ CHAR_OFFSETS = {
     "NAME": 4,
     "SEX": 5,
     "BANNER": 9,
+    "HAIRSTYLE": 13,     # 1 byte - Hair type/style
     "SKIN": 14,
-    "AGE": 15,           # 2 bytes, little endian
-    "HAIRSTYLE": 17,     # 1 byte
-    "HAIR_COLOR": 18,    # 1 byte
+    "AGE_HAIR_COLOR": 16,# 2 bytes (16-17) - bit-packed Hair Color and Age
     "APPEARANCE": 21,    # Random appearance bytes (legacy)
 }
 

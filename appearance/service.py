@@ -198,25 +198,30 @@ def list_characters(profiles_file_path: str = None, wse2: bool = False) -> list:
             skin_map = {0: 'White', 16: 'Light', 32: 'Tan', 48: 'Dark', 64: 'Black'}
             char_info['skin'] = skin_map.get(skin_byte, f'Unknown ({skin_byte})')
             
-            # Get Age, Hair style, and Hair color using fixed offsets
-            # Based on reverse-engineered format documentation and binary analysis
-            
-            # Age (2 bytes, little endian) at offset 15
-            age_offset = current_pos + CHAR_OFFSETS["AGE"]
-            if age_offset + 1 < len(profiles_data):
-                age_bytes = profiles_data[age_offset:age_offset + 2]
-                if len(age_bytes) == 2:
-                    char_info['age'] = int.from_bytes(age_bytes, 'little')
-            
-            # Hair style (1 byte) at offset 17
+            # Get Hair style (1 byte) at offset 13
             hair_offset = current_pos + CHAR_OFFSETS["HAIRSTYLE"]
             if hair_offset < len(profiles_data):
                 char_info['hairstyle'] = str(profiles_data[hair_offset])
             
-            # Hair color (1 byte) at offset 18
-            hair_color_offset = current_pos + CHAR_OFFSETS["HAIR_COLOR"]
-            if hair_color_offset < len(profiles_data):
-                char_info['hair_color'] = str(profiles_data[hair_color_offset])
+            # Get Age and Hair Color from bit-packed bytes 16-17
+            # Based on reverse-engineered format documentation and test file analysis
+            age_hair_offset = current_pos + CHAR_OFFSETS["AGE_HAIR_COLOR"]
+            if age_hair_offset + 1 < len(profiles_data):
+                byte_16 = profiles_data[age_hair_offset]
+                byte_17 = profiles_data[age_hair_offset + 1]
+                
+                # Hair Color: bits 4-5 of byte 16
+                # Values 0-3 map to color ranges: 0x00-0x0F, 0x10-0x1F, 0x20-0x2F, 0x30-0x3F
+                hair_color_raw = (byte_16 & 0x30) >> 4  # Extract bits 4-5 (0-3)
+                char_info['hair_color'] = str(hair_color_raw)
+                
+                # Age: Encoded across bytes 16-17 with bit-packing
+                # Byte 16 bits 6-7 contain low 2 bits of age (shifted by 6)
+                # Byte 17 contains high bits of age (shifted by 2 positions)
+                # Example: Age 1984 = 0x07C0 stored as byte16=0xC0, byte17=0x07
+                age_low_2bits = (byte_16 & 0xC0) >> 6  # Extract bits 6-7
+                age_value = age_low_2bits + (byte_17 << 2)
+                char_info['age'] = age_value
             
             # Get banner data (4 bytes at offset 9)
             banner_offset = current_pos + CHAR_OFFSETS["BANNER"]
