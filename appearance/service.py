@@ -115,8 +115,19 @@ def generate_n_random_characters(
         char_data = char_data[0:sex_offset] + get_random_sex() + char_data[sex_offset + 1:]
         # random skin
         char_data = char_data[0:skin_offset] + get_random_skin() + char_data[skin_offset + 1:]
-        # set name
-        char_data = char_data[0:name_offset] + names[char_idx % len(names)].encode() + char_data[name_offset + 1:]
+        # set name with numbering strategy
+        letter_idx = char_idx % len(names)
+        group_number = char_idx // len(names)
+        if group_number == 0:
+            name = names[letter_idx]
+        else:
+            name = names[letter_idx] + str(group_number)
+        name_bytes = name.encode()
+        name_length = len(name_bytes)
+        # Update name length at offset 0
+        char_data = bytes([name_length]) + char_data[1:]
+        # Update name at offset 4
+        char_data = char_data[0:name_offset] + name_bytes + char_data[name_offset + name_length:]
         header += char_data
 
     if profiles_file_path is None:

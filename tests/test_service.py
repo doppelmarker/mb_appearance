@@ -123,15 +123,46 @@ def test_generate_multiple_characters(stub_profiles_file, stub_resource_files):
     assert len(content) >= expected_min_size
 
 
-def test_generate_characters_name_cycling():
-    """Test that character names cycle through the alphabet."""
+def test_generate_characters_name_cycling(stub_profiles_file, stub_resource_files):
+    """Test that character names use numbering strategy when exceeding alphabet."""
+    # Generate 30 characters to test beyond alphabet
+    generate_n_random_characters(
+        30,
+        profiles_file_path=stub_profiles_file,
+        header_file_path=stub_resource_files["header"],
+        common_char_file_path=stub_resource_files["common_char"]
+    )
+    
+    # List characters and check names
+    characters = list_characters(profiles_file_path=stub_profiles_file)
+    
+    # Verify we have 30 characters
+    assert len(characters) == 30
+    
+    # Test expected naming pattern
+    expected_names = []
     import string
     names = string.ascii_lowercase
-
-    # Test name cycling logic
-    for i in range(30):  # Test beyond 26 letters
-        expected_name = names[i % len(names)]
-        assert expected_name == names[i % 26]
+    
+    for i in range(30):
+        letter_idx = i % len(names)
+        group_number = i // len(names)
+        if group_number == 0:
+            expected_names.append(names[letter_idx])
+        else:
+            expected_names.append(names[letter_idx] + str(group_number))
+    
+    # Check that names match expected pattern
+    actual_names = [char['name'] for char in characters]
+    
+    # First 26 should be a-z
+    assert actual_names[:26] == list(string.ascii_lowercase)
+    
+    # Next 4 should be a1, b1, c1, d1
+    assert actual_names[26:30] == ['a1', 'b1', 'c1', 'd1']
+    
+    # Verify all names are unique
+    assert len(set(actual_names)) == len(actual_names)
 
 
 def test_generate_characters_creates_unique_characters(stub_profiles_file, stub_resource_files):
