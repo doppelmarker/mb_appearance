@@ -1,6 +1,7 @@
 import os
 
 from setuptools import find_packages, setup
+from importlib.util import spec_from_file_location, module_from_spec
 
 
 def read(file_name):
@@ -10,9 +11,13 @@ def read(file_name):
 
 def get_version():
     version_file = os.path.join(os.path.dirname(__file__), "appearance", "__version__.py")
-    with open(version_file) as f:
-        exec(compile(f.read(), version_file, "exec"))
-    return locals()["__version__"]
+    try:
+        spec = spec_from_file_location("__version__", version_file)
+        version_module = module_from_spec(spec)
+        spec.loader.exec_module(version_module)
+        return version_module.__version__
+    except (FileNotFoundError, AttributeError) as e:
+        raise RuntimeError(f"Unable to find version in {version_file}") from e
 
 
 setup(
