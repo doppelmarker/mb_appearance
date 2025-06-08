@@ -37,6 +37,25 @@ class ArgParser:
             "--quiet", help="Suppress all output except errors.", action="store_true"
         )
         self.parser.add_argument(
+            "-l",
+            "--list",
+            help="List all characters.",
+            action="store_true"
+        )
+        self.parser.add_argument(
+            "-g",
+            "--gen",
+            help="Generate N random characters.",
+            metavar="N",
+            type=int
+        )
+        self.parser.add_argument(
+            "-d",
+            "--delete",
+            help="Delete a character by index or name.",
+            metavar="INDEX_OR_NAME"
+        )
+        self.parser.add_argument(
             "-b",
             "--backup",
             help="Backup characters file.",
@@ -53,25 +72,6 @@ class ArgParser:
             "--restore",
             help="Restore characters file from backup.",
             metavar="RESTORE_FROM"
-        )
-        self.parser.add_argument(
-            "-g",
-            "--gen",
-            help="Generate N random characters.",
-            metavar="N",
-            type=int
-        )
-        self.parser.add_argument(
-            "-d",
-            "--delete",
-            help="Delete a character by index or name.",
-            metavar="INDEX_OR_NAME"
-        )
-        self.parser.add_argument(
-            "-l",
-            "--list",
-            help="List all characters.",
-            action="store_true"
         )
         self.parser.add_argument(
             "--wse2",
