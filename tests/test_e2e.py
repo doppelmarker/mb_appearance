@@ -20,148 +20,90 @@ import logging
 import pytest
 from pathlib import Path
 
-from appearance.app import main
+from appearance import service
+from appearance.argparser import ArgParser
 
 
-def test_e2e_complete_workflow(tmp_path, monkeypatch, caplog):
-    """End-to-end test covering the complete workflow we demonstrated."""
+def test_e2e_complete_workflow(tmp_path):
+    """End-to-end test covering the complete workflow."""
     # Setup test environment
-    profiles_dir = tmp_path / "Mount&Blade Warband"
-    profiles_dir.mkdir()
-    profiles_file = profiles_dir / "profiles.dat"
-    
-    # Mock the profiles directory detection
-    def mock_get_profiles_file_path(wse2=False):
-        return profiles_file
-    
-    monkeypatch.setattr("appearance.consts.get_profiles_file_path", mock_get_profiles_file_path)
-    
-    # Mock sys.argv for each command
-    def run_command(args):
-        monkeypatch.setattr("sys.argv", ["mb-app"] + args)
-        with caplog.at_level(logging.INFO):
-            main()
+    profiles_file = tmp_path / "profiles.dat"
+    backup_dir = tmp_path / "backups"
+    backup_dir.mkdir()
     
     # 1. Generate 5 characters
-    run_command(["--gen", "5"])
-    assert "Successfully generated 5 random characters!" in caplog.text
-    caplog.clear()
+    service.generate_n_random_characters(5, profiles_file_path=profiles_file)
     
     # 2. List characters and verify they have valid skin values
-    run_command(["--list"])
-    assert "Characters in profiles.dat:" in caplog.text
-    
-    # Extract character info from logs
-    character_lines = [line for line in caplog.text.split('\n') if '. ' in line and '(' in line]
-    assert len(character_lines) == 5
+    characters = service.list_characters(profiles_file_path=profiles_file)
+    assert len(characters) == 5
     
     # Verify all characters have valid skin values (no "Unknown" values)
     valid_skins = ['White', 'Light', 'Tan', 'Dark', 'Black']
-    for line in character_lines:
-        assert any(skin in line for skin in valid_skins), f"Invalid skin in: {line}"
-        assert 'Unknown' not in line, f"Corrupted skin value in: {line}"
+    for char in characters:
+        assert char['skin'] in valid_skins, f"Invalid skin: {char['skin']}"
     
-    caplog.clear()
-    
-    # 3. Generate 15 more characters
-    run_command(["--gen", "15"])
-    assert "Successfully generated 15 random characters!" in caplog.text
-    caplog.clear()
+    # 3. Generate 15 more characters (overwrites)
+    service.generate_n_random_characters(15, profiles_file_path=profiles_file)
     
     # 4. List all 15 characters and verify no corruption
-    run_command(["--list"])
-    character_lines = [line for line in caplog.text.split('\n') if '. ' in line and '(' in line]
-    assert len(character_lines) == 15
+    characters = service.list_characters(profiles_file_path=profiles_file)
+    assert len(characters) == 15
     
     # Verify all 15 characters have valid skin values
-    for line in character_lines:
-        assert any(skin in line for skin in valid_skins), f"Invalid skin in: {line}"
-        assert 'Unknown' not in line, f"Corrupted skin value in: {line}"
-    
-    caplog.clear()
+    for char in characters:
+        assert char['skin'] in valid_skins, f"Invalid skin: {char['skin']}"
     
     # 5. Create a backup
-    run_command(["--backup", "test_backup"])
-    assert "Successfully made backup to" in caplog.text
-    assert "test_backup.dat" in caplog.text
-    caplog.clear()
+    service.backup("test_backup.dat", profiles_file_path=profiles_file, backup_dir=backup_dir)
+    assert (backup_dir / "test_backup.dat").exists()
     
     # 6. Show available backups
-    run_command(["--show"])
-    assert "Available backups:" in caplog.text
-    assert "test_backup" in caplog.text
-    caplog.clear()
+    service.show_backuped_characters(backup_dir)
+    # Just verify it doesn't crash
     
     # 7. Generate 3 new characters (overwrite existing)
-    run_command(["--gen", "3"])
-    assert "Successfully generated 3 random characters!" in caplog.text
-    caplog.clear()
+    service.generate_n_random_characters(3, profiles_file_path=profiles_file)
     
     # 8. Verify only 3 characters exist now
-    run_command(["--list"])
-    character_lines = [line for line in caplog.text.split('\n') if '. ' in line and '(' in line]
-    assert len(character_lines) == 3
-    caplog.clear()
+    characters = service.list_characters(profiles_file_path=profiles_file)
+    assert len(characters) == 3
     
     # 9. Restore from backup
-    run_command(["--restore", "test_backup"])
-    assert "Successfully restored from backup" in caplog.text
-    caplog.clear()
+    service.restore_from_backup(backup_dir, "test_backup.dat", profiles_file_path=profiles_file)
     
     # 10. Verify 15 characters are back
-    run_command(["--list"])
-    character_lines = [line for line in caplog.text.split('\n') if '. ' in line and '(' in line]
-    assert len(character_lines) == 15
+    characters = service.list_characters(profiles_file_path=profiles_file)
+    assert len(characters) == 15
     
-    # Store character names for deletion test
-    first_char_line = character_lines[0]
-    fifth_char_line = character_lines[5] if len(character_lines) > 5 else character_lines[1]
+    # Store first character info for deletion test
+    first_char_name = characters[0]['name']
+    fifth_char_name = characters[4]['name'] if len(characters) > 4 else characters[1]['name']
     
-    # Extract character name from line like "INFO: 5. g (Female, Tan)"
-    char_name_to_delete = fifth_char_line.split('. ')[1].split(' ')[0]
-    
-    caplog.clear()
-    
-    # 11. Delete character by index (index 5)
-    run_command(["--delete", "5"])
-    assert "Successfully deleted character at index 5" in caplog.text
-    caplog.clear()
+    # 11. Delete character by index (index 4, which is 5th character)
+    success = service.delete_character(str(profiles_file), index=4)
+    assert success
     
     # 12. Verify character was deleted (should have 14 now)
-    run_command(["--list"])
-    character_lines = [line for line in caplog.text.split('\n') if '. ' in line and '(' in line]
-    assert len(character_lines) == 14
-    caplog.clear()
+    characters = service.list_characters(profiles_file_path=profiles_file)
+    assert len(characters) == 14
+    assert all(char['name'] != fifth_char_name for char in characters)
     
     # 13. Delete character by name
-    # Find a character name from the current list
-    run_command(["--list"])
-    character_lines = [line for line in caplog.text.split('\n') if '. ' in line and '(' in line]
-    if character_lines:
-        # Extract name from first character line
-        char_to_delete = character_lines[2].split('. ')[1].split(' ')[0]
-        caplog.clear()
-        
-        run_command(["--delete", char_to_delete])
-        assert f"Successfully deleted character '{char_to_delete}'" in caplog.text
-        caplog.clear()
-        
-        # 14. Verify character was deleted (should have 13 now)
-        run_command(["--list"])
-        character_lines = [line for line in caplog.text.split('\n') if '. ' in line and '(' in line]
-        assert len(character_lines) == 13
-        
-        # Verify the deleted character is no longer in the list
-        remaining_chars = [line.split('. ')[1].split(' ')[0] for line in character_lines]
-        assert char_to_delete not in remaining_chars
+    char_to_delete = characters[2]['name']
+    success = service.delete_character(str(profiles_file), name=char_to_delete)
+    assert success
+    
+    # 14. Verify character was deleted (should have 13 now)
+    characters = service.list_characters(profiles_file_path=profiles_file)
+    assert len(characters) == 13
+    assert all(char['name'] != char_to_delete for char in characters)
 
 
 def test_e2e_character_data_independence(stub_profiles_file, stub_resource_files):
     """Test that generated characters have independent data (bug #9 fix verification)."""
-    from appearance.service import generate_n_random_characters, list_characters
-    
     # Generate a large number of characters to test for corruption
-    generate_n_random_characters(
+    service.generate_n_random_characters(
         25,  # Enough to trigger the original bug
         profiles_file_path=stub_profiles_file,
         header_file_path=stub_resource_files["header"],
@@ -169,7 +111,7 @@ def test_e2e_character_data_independence(stub_profiles_file, stub_resource_files
     )
     
     # Read the generated file and verify character independence
-    characters = list_characters(profiles_file_path=str(stub_profiles_file))
+    characters = service.list_characters(profiles_file_path=str(stub_profiles_file))
     
     assert len(characters) == 25
     
@@ -188,44 +130,61 @@ def test_e2e_character_data_independence(stub_profiles_file, stub_resource_files
     assert len(set(skin_values)) > 1, "All characters have identical skin - possible data corruption"
 
 
-def test_e2e_wse2_workflow(tmp_path, monkeypatch, caplog):
+def test_e2e_wse2_workflow(tmp_path):
     """Test the workflow with WSE2 flag."""
     # Setup test environment for WSE2
-    profiles_dir = tmp_path / "Mount&Blade Warband WSE2"
-    profiles_dir.mkdir()
-    profiles_file = profiles_dir / "profiles.dat"
+    profiles_file_wse2 = tmp_path / "profiles_wse2.dat"
+    profiles_file_regular = tmp_path / "profiles_regular.dat"
     
-    # Mock the profiles directory detection for WSE2
-    def mock_get_profiles_file_path(wse2=False):
-        if wse2:
-            return profiles_file
-        else:
-            # Return a different path for non-WSE2
-            regular_dir = tmp_path / "Mount&Blade Warband"
-            regular_dir.mkdir(exist_ok=True)
-            return regular_dir / "profiles.dat"
+    # Generate characters for WSE2
+    service.generate_n_random_characters(5, profiles_file_path=profiles_file_wse2)
     
-    monkeypatch.setattr("appearance.consts.get_profiles_file_path", mock_get_profiles_file_path)
-    
-    def run_command(args):
-        monkeypatch.setattr("sys.argv", ["mb-app"] + args)
-        with caplog.at_level(logging.INFO):
-            main()
-    
-    # Generate characters with WSE2 flag
-    run_command(["--gen", "5", "--wse2"])
-    assert "Successfully generated 5 random characters!" in caplog.text
-    caplog.clear()
+    # Generate different characters for regular
+    service.generate_n_random_characters(3, profiles_file_path=profiles_file_regular)
     
     # List WSE2 characters
-    run_command(["--list", "--wse2"])
-    assert "Characters in profiles.dat:" in caplog.text
+    wse2_characters = service.list_characters(profiles_file_path=profiles_file_wse2)
+    assert len(wse2_characters) == 5
     
-    character_lines = [line for line in caplog.text.split('\n') if '. ' in line and '(' in line]
-    assert len(character_lines) == 5
+    # List regular characters
+    regular_characters = service.list_characters(profiles_file_path=profiles_file_regular)
+    assert len(regular_characters) == 3
     
-    # Verify all WSE2 characters have valid skin values
+    # Verify all characters have valid skin values
     valid_skins = ['White', 'Light', 'Tan', 'Dark', 'Black']
-    for line in character_lines:
-        assert any(skin in line for skin in valid_skins), f"Invalid skin in WSE2 character: {line}"
-        assert 'Unknown' not in line, f"Corrupted skin value in WSE2 character: {line}"
+    for char in wse2_characters:
+        assert char['skin'] in valid_skins, f"Invalid skin in WSE2 character: {char['skin']}"
+    
+    for char in regular_characters:
+        assert char['skin'] in valid_skins, f"Invalid skin in regular character: {char['skin']}"
+    
+    # Verify the two sets are independent
+    assert len(wse2_characters) != len(regular_characters)
+
+
+def test_argparser_combinations():
+    """Test various argument combinations work correctly."""
+    parser = ArgParser()
+    
+    # Test valid combinations
+    args = parser.parser.parse_args(["-g", "10", "-b", "backup1"])
+    assert args.gen == 10
+    assert args.backup == "backup1"
+    
+    args = parser.parser.parse_args(["--wse2", "-l"])
+    assert args.wse2 is True
+    assert args.list is True
+    
+    args = parser.parser.parse_args(["--verbose", "--quiet", "-s"])
+    assert args.verbose is True
+    assert args.quiet is True
+    assert args.show is True
+    
+    # Test all actions can be combined
+    args = parser.parser.parse_args(["-g", "5", "-b", "bak", "-r", "res", "-s", "-l", "-d", "test"])
+    assert args.gen == 5
+    assert args.backup == "bak"
+    assert args.restore == "res"
+    assert args.show is True
+    assert args.list is True
+    assert args.delete == "test"

@@ -68,6 +68,12 @@ class ArgParser:
             metavar="INDEX_OR_NAME"
         )
         self.parser.add_argument(
+            "-l",
+            "--list",
+            help="List all characters.",
+            action="store_true"
+        )
+        self.parser.add_argument(
             "--wse2",
             help="Use WSE2 (Warband Script Enhancer 2) profiles directory.",
             action="store_true"

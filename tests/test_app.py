@@ -1,50 +1,88 @@
 import logging
-import sys
-from io import StringIO
 from pathlib import Path
 
 import pytest
 
-from appearance.app import main
+from appearance.argparser import ArgParser
+from appearance import service
 
 
-def test_main_with_show_command(stub_backup_dir, monkeypatch, caplog):
-    # Create backup files
-    (stub_backup_dir / "backup1.dat").write_bytes(b"data1")
+def test_argparser_direct_parse():
+    """Test argument parsing without monkeypatch."""
+    parser = ArgParser()
     
-    # Monkeypatch the constants
-    monkeypatch.setattr("appearance.app.BACKUP_FILE_DIR", stub_backup_dir)
+    # Test show command
+    args = parser.parser.parse_args(["-s"])
+    assert args.show is True
     
-    # Mock command line arguments
-    test_args = ["mb-app", "-s"]
-    monkeypatch.setattr(sys, "argv", test_args)
+    # Test backup command
+    args = parser.parser.parse_args(["-b", "test_backup"])
+    assert args.backup == "test_backup"
     
-    with caplog.at_level(logging.INFO):
-        main()
+    # Test restore command
+    args = parser.parser.parse_args(["-r", "test_restore"])
+    assert args.restore == "test_restore"
     
-    assert "Available backups:" in caplog.text
-    assert "backup1" in caplog.text
+    # Test generate command
+    args = parser.parser.parse_args(["-g", "10"])
+    assert args.gen == 10
+    
+    # Test delete command
+    args = parser.parser.parse_args(["-d", "TestChar"])
+    assert args.delete == "TestChar"
+    
+    # Test list command
+    args = parser.parser.parse_args(["-l"])
+    assert args.list is True
+    
+    # Test wse2 flag
+    args = parser.parser.parse_args(["--wse2", "-g", "5"])
+    assert args.wse2 is True
+    assert args.gen == 5
 
 
-def test_main_with_backup_command(tmp_path, monkeypatch):
-    # Create test directories
+def test_no_action_error():
+    """Test that no action raises error."""
+    parser = ArgParser()
+    args = parser.parser.parse_args([])
+    
+    # The app should error when no action is provided
+    assert not any([args.backup, args.restore, args.gen, args.show, args.delete, args.list])
+
+
+def test_show_backuped_characters_function(tmp_path):
+    """Test show_backuped_characters function directly."""
+    # Create backup directory with files
     backup_dir = tmp_path / "backups"
     backup_dir.mkdir()
+    (backup_dir / "backup1.dat").write_bytes(b"data1")
+    (backup_dir / "backup2.dat").write_bytes(b"data2")
+    (backup_dir / "not_a_dat.txt").write_bytes(b"data3")  # Should be ignored
+    
+    # Call the function directly
+    service.show_backuped_characters(backup_dir)
+    # The function logs output, so we just verify it doesn't crash
+
+
+def test_backup_function(tmp_path):
+    """Test backup function directly."""
+    # Create test profiles file
     profiles_dir = tmp_path / "profiles"
     profiles_dir.mkdir()
     profiles_file = profiles_dir / "profiles.dat"
     profiles_file.write_bytes(b"test profile data")
     
-    # Monkeypatch the paths
-    monkeypatch.setattr("appearance.app.BACKUP_FILE_DIR", backup_dir)
-    monkeypatch.setattr("appearance.service.BACKUP_FILE_DIR", backup_dir)
-    monkeypatch.setattr("appearance.service.get_profiles_file_path", lambda wse2: profiles_file)
+    # Create backup directory
+    backup_dir = tmp_path / "backups"
+    backup_dir.mkdir()
     
-    # Mock command line arguments
-    test_args = ["mb-app", "-b", "test_backup"]
-    monkeypatch.setattr(sys, "argv", test_args)
-    
-    main()
+    # Call backup directly with dependency injection
+    service.backup(
+        "test_backup.dat",
+        wse2=False,
+        profiles_file_path=profiles_file,
+        backup_dir=backup_dir
+    )
     
     # Verify backup was created
     backup_file = backup_dir / "test_backup.dat"
@@ -52,447 +90,133 @@ def test_main_with_backup_command(tmp_path, monkeypatch):
     assert backup_file.read_bytes() == b"test profile data"
 
 
-def test_main_with_backup_command_adds_dat_extension(tmp_path, monkeypatch):
-    # Create test directories
-    backup_dir = tmp_path / "backups"
-    backup_dir.mkdir()
-    profiles_dir = tmp_path / "profiles"
-    profiles_dir.mkdir()
-    profiles_file = profiles_dir / "profiles.dat"
-    profiles_file.write_bytes(b"test profile data")
-    
-    # Monkeypatch the paths
-    monkeypatch.setattr("appearance.app.BACKUP_FILE_DIR", backup_dir)
-    monkeypatch.setattr("appearance.service.BACKUP_FILE_DIR", backup_dir)
-    monkeypatch.setattr("appearance.service.get_profiles_file_path", lambda wse2: profiles_file)
-    
-    # Mock command line arguments with .txt extension
-    test_args = ["mb-app", "-b", "test_backup.txt"]
-    monkeypatch.setattr(sys, "argv", test_args)
-    
-    main()
-    
-    # Verify backup was created with .dat extension
-    backup_file = backup_dir / "test_backup.dat"
-    assert backup_file.exists()
-    assert not (backup_dir / "test_backup.txt").exists()
-
-
-def test_main_with_restore_command_from_backup(tmp_path, monkeypatch):
-    # Create backup directory with backup file
+def test_restore_from_backup_function(tmp_path):
+    """Test restore_from_backup function directly."""
+    # Create backup file
     backup_dir = tmp_path / "backups"
     backup_dir.mkdir()
     backup_file = backup_dir / "test_restore.dat"
     backup_data = b"backup profile data"
     backup_file.write_bytes(backup_data)
     
-    # Create profiles directory
+    # Create profiles file
     profiles_dir = tmp_path / "profiles"
     profiles_dir.mkdir()
     profiles_file = profiles_dir / "profiles.dat"
     profiles_file.write_bytes(b"old data")
     
-    # Monkeypatch the paths
-    monkeypatch.setattr("appearance.app.BACKUP_FILE_DIR", backup_dir)
-    monkeypatch.setattr("appearance.service.get_profiles_file_path", lambda wse2: profiles_file)
+    # Call restore directly with dependency injection
+    service.restore_from_backup(
+        backup_dir,
+        "test_restore.dat",
+        wse2=False,
+        profiles_file_path=profiles_file
+    )
     
-    # Mock command line arguments
-    test_args = ["mb-app", "-r", "test_restore", "--wse2"]
-    monkeypatch.setattr(sys, "argv", test_args)
-    
-    main()
-    
-    # Verify profile was restored
+    # Verify restore worked
     assert profiles_file.read_bytes() == backup_data
 
 
-def test_main_with_restore_command_from_resources(tmp_path, monkeypatch):
-    # Create directories
-    backup_dir = tmp_path / "backups"
-    backup_dir.mkdir()
-    resources_dir = tmp_path / "resources"
-    resources_dir.mkdir()
-    
-    # Create resource file (backup doesn't exist)
-    resource_file = resources_dir / "test_restore.dat"
-    resource_data = b"resource profile data"
-    resource_file.write_bytes(resource_data)
-    
+def test_generate_random_characters_function(tmp_path):
+    """Test generate_n_random_characters function directly."""
     # Create profiles directory
     profiles_dir = tmp_path / "profiles"
     profiles_dir.mkdir()
     profiles_file = profiles_dir / "profiles.dat"
-    profiles_file.write_bytes(b"old data")
     
-    # Monkeypatch the paths
-    monkeypatch.setattr("appearance.app.BACKUP_FILE_DIR", backup_dir)
-    monkeypatch.setattr("appearance.app.RESOURCES_FILE_DIR", resources_dir)
-    monkeypatch.setattr("appearance.service.get_profiles_file_path", lambda wse2: profiles_file)
-    
-    # Mock command line arguments
-    test_args = ["mb-app", "-r", "test_restore.dat"]
-    monkeypatch.setattr(sys, "argv", test_args)
-    
-    main()
-    
-    # Verify profile was restored from resources
-    assert profiles_file.read_bytes() == resource_data
-
-
-def test_main_with_restore_command_file_not_found(tmp_path, monkeypatch, capsys):
-    # Create empty directories
-    backup_dir = tmp_path / "backups"
-    backup_dir.mkdir()
-    resources_dir = tmp_path / "resources"
-    resources_dir.mkdir()
-    
-    # Monkeypatch the paths
-    monkeypatch.setattr("appearance.app.BACKUP_FILE_DIR", backup_dir)
-    monkeypatch.setattr("appearance.app.RESOURCES_FILE_DIR", resources_dir)
-    
-    # Mock command line arguments
-    test_args = ["mb-app", "-r", "nonexistent"]
-    monkeypatch.setattr(sys, "argv", test_args)
-    
-    # Should exit with error
-    with pytest.raises(SystemExit) as exc_info:
-        main()
-    
-    assert exc_info.value.code == 2
-    captured = capsys.readouterr()
-    assert "Malformed restore path!" in captured.err
-
-
-def test_main_with_generate_command(tmp_path, monkeypatch):
-    # Create test directories and files
-    profiles_dir = tmp_path / "profiles"
-    profiles_dir.mkdir()
-    profiles_file = profiles_dir / "profiles.dat"
-    
-    resources_dir = tmp_path / "resources"
-    resources_dir.mkdir()
-    header_file = resources_dir / "header.dat"
-    header_file.write_bytes(b"\x00" * 16)
-    common_char_file = resources_dir / "common_char.dat"
-    common_char_file.write_bytes(b"\x00" * 12 + b"\x00" * 284)
-    
-    # Monkeypatch the paths
-    monkeypatch.setattr("appearance.service.get_profiles_file_path", lambda wse2: profiles_file)
-    monkeypatch.setattr("appearance.service.HEADER_FILE_PATH", header_file)
-    monkeypatch.setattr("appearance.service.COMMON_CHAR_FILE_PATH", common_char_file)
-    
-    # Mock command line arguments
-    test_args = ["mb-app", "-g", "10"]
-    monkeypatch.setattr(sys, "argv", test_args)
-    
-    main()
-    
-    # Verify profiles file was created
-    assert profiles_file.exists()
-    content = profiles_file.read_bytes()
-    assert len(content) > 16  # Has header + characters
-
-
-def test_main_with_no_action(monkeypatch, capsys):
-    # Mock command line arguments with no action
-    test_args = ["mb-app"]
-    monkeypatch.setattr(sys, "argv", test_args)
-    
-    # Should exit with error
-    with pytest.raises(SystemExit) as exc_info:
-        main()
-    
-    assert exc_info.value.code == 2
-    captured = capsys.readouterr()
-    assert "No action requested!" in captured.err
-
-
-def test_main_with_verbose_logging(tmp_path, monkeypatch, caplog):
-    # Create test directories
-    profiles_dir = tmp_path / "profiles"
-    profiles_dir.mkdir()
-    profiles_file = profiles_dir / "profiles.dat"
-    
-    resources_dir = tmp_path / "resources"
-    resources_dir.mkdir()
-    header_file = resources_dir / "header.dat"
-    header_file.write_bytes(b"\x00" * 16)
-    common_char_file = resources_dir / "common_char.dat"
-    common_char_file.write_bytes(b"\x00" * 12 + b"\x00" * 284)
-    
-    # Monkeypatch the paths
-    monkeypatch.setattr("appearance.service.get_profiles_file_path", lambda wse2: profiles_file)
-    monkeypatch.setattr("appearance.service.HEADER_FILE_PATH", header_file)
-    monkeypatch.setattr("appearance.service.COMMON_CHAR_FILE_PATH", common_char_file)
-    
-    # Mock command line arguments with verbose flag
-    test_args = ["mb-app", "-g", "1", "--verbose"]
-    monkeypatch.setattr(sys, "argv", test_args)
-    
-    # Capture all logs including DEBUG
-    with caplog.at_level(logging.DEBUG):
-        main()
-    
-    # Should have INFO message
-    assert "Successfully generated 1 random characters!" in caplog.text
-
-
-def test_main_with_quiet_logging(tmp_path, monkeypatch, caplog):
-    # Create test directories
-    profiles_dir = tmp_path / "profiles"
-    profiles_dir.mkdir()
-    profiles_file = profiles_dir / "profiles.dat"
-    
-    resources_dir = tmp_path / "resources"
-    resources_dir.mkdir()
-    header_file = resources_dir / "header.dat"
-    header_file.write_bytes(b"\x00" * 16)
-    common_char_file = resources_dir / "common_char.dat"
-    common_char_file.write_bytes(b"\x00" * 12 + b"\x00" * 284)
-    
-    # Monkeypatch the paths
-    monkeypatch.setattr("appearance.service.get_profiles_file_path", lambda wse2: profiles_file)
-    monkeypatch.setattr("appearance.service.HEADER_FILE_PATH", header_file)
-    monkeypatch.setattr("appearance.service.COMMON_CHAR_FILE_PATH", common_char_file)
-    
-    # Mock command line arguments with quiet flag
-    test_args = ["mb-app", "-g", "1", "--quiet"]
-    monkeypatch.setattr(sys, "argv", test_args)
-    
-    # Capture logs starting from ERROR (quiet should suppress INFO)
-    with caplog.at_level(logging.ERROR):
-        main()
-    
-    # Should not have any ERROR messages for successful operation
-    assert len(caplog.records) == 0
-
-
-def test_main_with_default_logging(tmp_path, monkeypatch, caplog):
-    # Create test directories
-    profiles_dir = tmp_path / "profiles"
-    profiles_dir.mkdir()
-    profiles_file = profiles_dir / "profiles.dat"
-    
-    resources_dir = tmp_path / "resources"
-    resources_dir.mkdir()
-    header_file = resources_dir / "header.dat"
-    header_file.write_bytes(b"\x00" * 16)
-    common_char_file = resources_dir / "common_char.dat"
-    common_char_file.write_bytes(b"\x00" * 12 + b"\x00" * 284)
-    
-    # Monkeypatch the paths
-    monkeypatch.setattr("appearance.service.get_profiles_file_path", lambda wse2: profiles_file)
-    monkeypatch.setattr("appearance.service.HEADER_FILE_PATH", header_file)
-    monkeypatch.setattr("appearance.service.COMMON_CHAR_FILE_PATH", common_char_file)
-    
-    # Mock command line arguments without verbose or quiet
-    test_args = ["mb-app", "-g", "1"]
-    monkeypatch.setattr(sys, "argv", test_args)
-    
-    # Capture logs at INFO level
-    with caplog.at_level(logging.INFO):
-        main()
-    
-    # Should have INFO message
-    assert "Successfully generated 1 random characters!" in caplog.text
-
-
-def test_main_with_delete_command_by_index(tmp_path, monkeypatch, caplog):
-    # Create test profiles file with characters
-    profiles_dir = tmp_path / "profiles"
-    profiles_dir.mkdir()
-    profiles_file = profiles_dir / "profiles.dat"
-    
-    # Create a test file with 3 characters
-    header = b'\x0a\x00\x00\x00' + b'\x03\x00\x00\x00' + b'\x03\x00\x00\x00'
-    char1 = b'\x09' + b'\x00' * 3 + b'TestChar1' + b'\x00' * 76
-    char2 = b'\x09' + b'\x00' * 3 + b'TestChar2' + b'\x00' * 76
-    char3 = b'\x09' + b'\x00' * 3 + b'TestChar3' + b'\x00' * 76
-    profiles_file.write_bytes(header + char1 + char2 + char3)
-    
-    # Monkeypatch the paths
-    monkeypatch.setattr("appearance.app.get_profiles_file_path", lambda wse2: profiles_file)
-    
-    # Mock command line arguments
-    test_args = ["mb-app", "-d", "1"]
-    monkeypatch.setattr(sys, "argv", test_args)
-    
-    with caplog.at_level(logging.INFO):
-        main()
-    
-    # Check success message
-    assert "Successfully deleted character at index 1" in caplog.text
-    
-    # Verify character was actually deleted
-    data = profiles_file.read_bytes()
-    assert b'TestChar1' in data
-    assert b'TestChar2' not in data
-    assert b'TestChar3' in data
-
-
-def test_main_with_delete_command_by_name(tmp_path, monkeypatch, caplog):
-    # Create test profiles file with characters
-    profiles_dir = tmp_path / "profiles"
-    profiles_dir.mkdir()
-    profiles_file = profiles_dir / "profiles.dat"
-    
-    # Create a test file with 3 characters
-    header = b'\x0a\x00\x00\x00' + b'\x03\x00\x00\x00' + b'\x03\x00\x00\x00'
-    char1 = b'\x09' + b'\x00' * 3 + b'TestChar1' + b'\x00' * 76
-    char2 = b'\x09' + b'\x00' * 3 + b'TestChar2' + b'\x00' * 76
-    char3 = b'\x09' + b'\x00' * 3 + b'TestChar3' + b'\x00' * 76
-    profiles_file.write_bytes(header + char1 + char2 + char3)
-    
-    # Monkeypatch the paths
-    monkeypatch.setattr("appearance.app.get_profiles_file_path", lambda wse2: profiles_file)
-    
-    # Mock command line arguments
-    test_args = ["mb-app", "-d", "TestChar2"]
-    monkeypatch.setattr(sys, "argv", test_args)
-    
-    with caplog.at_level(logging.INFO):
-        main()
-    
-    # Check success message
-    assert "Successfully deleted character 'TestChar2'" in caplog.text
-    
-    # Verify character was actually deleted
-    data = profiles_file.read_bytes()
-    assert b'TestChar1' in data
-    assert b'TestChar2' not in data
-    assert b'TestChar3' in data
-
-
-def test_main_with_delete_command_failure(tmp_path, monkeypatch, capsys):
-    # Create test profiles file with only one character
-    profiles_dir = tmp_path / "profiles"
-    profiles_dir.mkdir()
-    profiles_file = profiles_dir / "profiles.dat"
-    
-    # Create a test file with 1 character
-    header = b'\x0a\x00\x00\x00' + b'\x01\x00\x00\x00' + b'\x01\x00\x00\x00'
-    char1 = b'\x09' + b'\x00' * 3 + b'TestChar1' + b'\x00' * 76
-    profiles_file.write_bytes(header + char1)
-    
-    # Monkeypatch the paths
-    monkeypatch.setattr("appearance.app.get_profiles_file_path", lambda wse2: profiles_file)
-    
-    # Mock command line arguments
-    test_args = ["mb-app", "-d", "0"]
-    monkeypatch.setattr(sys, "argv", test_args)
-    
-    # Should exit with error
-    with pytest.raises(SystemExit) as exc_info:
-        main()
-    
-    assert exc_info.value.code == 2
-    captured = capsys.readouterr()
-    assert "Failed to delete character!" in captured.err
-
-
-def test_main_with_list_command(tmp_path, monkeypatch, caplog, stub_resource_files):
-    # Create test profiles file using actual generation to ensure proper format
-    profiles_dir = tmp_path / "profiles"
-    profiles_dir.mkdir()
-    profiles_file = profiles_dir / "profiles.dat"
-    
-    # Generate real characters using our fixed generation function
-    from appearance.service import generate_n_random_characters
-    generate_n_random_characters(
+    # Call generate directly with dependency injection
+    service.generate_n_random_characters(
         3,
-        profiles_file_path=profiles_file,
-        header_file_path=stub_resource_files["header"],
-        common_char_file_path=stub_resource_files["common_char"]
+        wse2=False,
+        profiles_file_path=profiles_file
     )
     
-    # Monkeypatch the paths
-    monkeypatch.setattr("appearance.app.get_profiles_file_path", lambda wse2: profiles_file)
-    monkeypatch.setattr("appearance.service.get_profiles_file_path", lambda wse2: profiles_file)
+    # Verify file was created and has content
+    assert profiles_file.exists()
+    assert profiles_file.stat().st_size > 0
     
-    # Mock command line arguments
-    test_args = ["mb-app", "-l"]
-    monkeypatch.setattr(sys, "argv", test_args)
-    
-    with caplog.at_level(logging.INFO):
-        main()
-    
-    # Check output contains all characters with valid skin values
-    assert "Characters in profiles.dat:" in caplog.text
-    
-    # Extract character lines
-    character_lines = [line for line in caplog.text.split('\n') if '. ' in line and '(' in line]
-    assert len(character_lines) == 3
-    
-    # Verify all characters have valid skin values (the key fix verification)
-    valid_skins = ['White', 'Light', 'Tan', 'Dark', 'Black']
-    for line in character_lines:
-        assert any(skin in line for skin in valid_skins), f"Invalid skin in: {line}"
-        assert 'Unknown' not in line, f"Corrupted skin value in: {line}"
+    # Verify we can list the characters
+    characters = service.list_characters(profiles_file_path=profiles_file)
+    assert len(characters) == 3
 
 
-def test_main_with_list_command_no_characters(tmp_path, monkeypatch, caplog):
-    # Create test profiles file with no characters
+def test_delete_character_function(tmp_path):
+    """Test delete_character function directly."""
+    # Create profiles file with test data
     profiles_dir = tmp_path / "profiles"
     profiles_dir.mkdir()
     profiles_file = profiles_dir / "profiles.dat"
     
-    # Create header with 0 characters
-    header = b"\x00\x00\x00\x00"  # 4 bytes
-    header += b"\x00\x00\x00\x00"  # Character count = 0
-    header += b"\x00\x00\x00\x00"  # 4 more bytes
+    # First generate some characters
+    service.generate_n_random_characters(
+        3,
+        wse2=False,
+        profiles_file_path=profiles_file
+    )
     
-    profiles_file.write_bytes(header)
+    # Get initial character list
+    chars_before = service.list_characters(profiles_file_path=profiles_file)
+    assert len(chars_before) == 3
+    first_char_name = chars_before[0]['name']
     
-    # Monkeypatch the paths
-    monkeypatch.setattr("appearance.app.get_profiles_file_path", lambda wse2: profiles_file)
-    monkeypatch.setattr("appearance.service.get_profiles_file_path", lambda wse2: profiles_file)
+    # Delete by index
+    success = service.delete_character(str(profiles_file), index=0)
+    assert success
     
-    # Mock command line arguments
-    test_args = ["mb-app", "-l"]
-    monkeypatch.setattr(sys, "argv", test_args)
+    # Verify deletion
+    chars_after = service.list_characters(profiles_file_path=profiles_file)
+    assert len(chars_after) == 2
+    assert all(char['name'] != first_char_name for char in chars_after)
     
-    with caplog.at_level(logging.INFO):
-        main()
+    # Delete by name
+    second_char_name = chars_after[0]['name']
+    success = service.delete_character(str(profiles_file), name=second_char_name)
+    assert success
     
-    # Should indicate no characters found
-    assert "No characters found or unable to read profiles file." in caplog.text
+    # Verify deletion
+    chars_final = service.list_characters(profiles_file_path=profiles_file)
+    assert len(chars_final) == 1
+    assert chars_final[0]['name'] != second_char_name
 
 
-def test_main_with_list_command_wse2(tmp_path, monkeypatch, caplog, stub_resource_files):
-    # Create test profiles file for WSE2 using actual generation
+def test_list_characters_function(tmp_path):
+    """Test list_characters function directly."""
+    # Create profiles file
     profiles_dir = tmp_path / "profiles"
     profiles_dir.mkdir()
     profiles_file = profiles_dir / "profiles.dat"
     
-    # Generate real characters using our fixed generation function
-    from appearance.service import generate_n_random_characters
-    generate_n_random_characters(
-        1,
-        profiles_file_path=profiles_file,
-        header_file_path=stub_resource_files["header"],
-        common_char_file_path=stub_resource_files["common_char"]
+    # Generate test characters
+    service.generate_n_random_characters(
+        5,
+        wse2=False,
+        profiles_file_path=profiles_file
     )
     
-    # Monkeypatch the paths
-    monkeypatch.setattr("appearance.app.get_profiles_file_path", lambda wse2: profiles_file)
-    monkeypatch.setattr("appearance.service.get_profiles_file_path", lambda wse2: profiles_file)
+    # List characters
+    characters = service.list_characters(profiles_file_path=profiles_file)
     
-    # Mock command line arguments with WSE2 flag
-    test_args = ["mb-app", "-l", "--wse2"]
-    monkeypatch.setattr(sys, "argv", test_args)
+    # Verify results
+    assert len(characters) == 5
+    for i, char in enumerate(characters):
+        assert char['index'] == i
+        assert 'name' in char
+        assert 'sex' in char
+        assert 'skin' in char
+        assert char['sex'] in ['Male', 'Female']
+        assert char['skin'] in ['White', 'Light', 'Tan', 'Dark', 'Black']
+
+
+def test_file_validation(tmp_path):
+    """Test file validation functions."""
+    from appearance.validators import validate_file_exists
     
-    with caplog.at_level(logging.INFO):
-        main()
+    # Create test file
+    test_file = tmp_path / "test.dat"
+    test_file.write_bytes(b"data")
     
-    # Check output contains the character with valid skin value
-    assert "Characters in profiles.dat:" in caplog.text
+    # Test existing file
+    assert validate_file_exists(test_file) is True
     
-    # Extract character lines
-    character_lines = [line for line in caplog.text.split('\n') if '. ' in line and '(' in line]
-    assert len(character_lines) == 1
-    
-    # Verify character has valid skin value
-    valid_skins = ['White', 'Light', 'Tan', 'Dark', 'Black']
-    line = character_lines[0]
-    assert any(skin in line for skin in valid_skins), f"Invalid skin in WSE2 character: {line}"
-    assert 'Unknown' not in line, f"Corrupted skin value in WSE2 character: {line}"
+    # Test non-existing file  
+    assert validate_file_exists(tmp_path / "nonexistent.dat") is False

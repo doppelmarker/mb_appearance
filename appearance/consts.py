@@ -3,21 +3,40 @@ import sys
 from pathlib import Path
 
 
-def get_profiles_dir_path(wse2: bool = False) -> Path:
-    home = Path.home()
+def get_profiles_dir_path(wse2: bool = False, platform: str = None, home_path: Path = None) -> Path:
+    """Get the profiles directory path based on platform.
+    
+    Args:
+        wse2: Whether to use WSE2 directory
+        platform: Platform string (defaults to sys.platform)
+        home_path: Home directory path (defaults to Path.home())
+    """
+    if platform is None:
+        platform = sys.platform
+    if home_path is None:
+        home_path = Path.home()
+    
+    home = home_path
     mb_dir_name = "Mount&Blade Warband WSE2" if wse2 else "Mount&Blade Warband"
 
-    if sys.platform == "win32":
+    if platform == "win32":
         return home / "AppData/Roaming" / mb_dir_name
-    if sys.platform == "linux":
+    if platform == "linux":
         return home / ".local/share" / mb_dir_name
-    if sys.platform == "darwin":
+    if platform == "darwin":
         return home / "Library/Application Support" / mb_dir_name
     return home / mb_dir_name  # Fallback for unknown platforms
 
 
-def get_profiles_file_path(wse2: bool = False) -> Path:
-    return get_profiles_dir_path(wse2) / PROFILES_FILE_NAME
+def get_profiles_file_path(wse2: bool = False, platform: str = None, home_path: Path = None) -> Path:
+    """Get the profiles.dat file path.
+    
+    Args:
+        wse2: Whether to use WSE2 directory
+        platform: Platform string (defaults to sys.platform)
+        home_path: Home directory path (defaults to Path.home())
+    """
+    return get_profiles_dir_path(wse2, platform, home_path) / PROFILES_FILE_NAME
 
 
 PROFILES_DIR_PATH = get_profiles_dir_path()

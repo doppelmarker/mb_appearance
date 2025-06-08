@@ -3,7 +3,7 @@ from pathlib import Path
 
 from appearance.argparser import ArgParser
 from appearance.consts import BACKUP_FILE_DIR, RESOURCES_FILE_DIR, get_profiles_file_path
-from appearance.service import backup, delete_character, generate_n_random_characters, restore_from_backup, show_backuped_characters
+from appearance.service import backup, delete_character, generate_n_random_characters, list_characters, restore_from_backup, show_backuped_characters
 from appearance.validators import validate_file_exists
 
 
@@ -29,9 +29,10 @@ def main():
     restore_from: str = cli_args.restore
     generate: int = cli_args.gen
     delete: str = cli_args.delete
+    list_chars: bool = cli_args.list
     wse2: bool = cli_args.wse2
 
-    if not (backup_to or restore_from or generate or show_backups or delete):
+    if not (backup_to or restore_from or generate or show_backups or delete or list_chars):
         arg_parser.parser.error("No action requested!")
 
     if show_backups:
@@ -67,3 +68,12 @@ def main():
         
         if not success:
             arg_parser.parser.error("Failed to delete character!")
+    
+    if list_chars:
+        characters = list_characters(wse2=wse2)
+        if not characters:
+            logging.info("No characters found or unable to read profiles file.")
+        else:
+            logging.info("Characters in profiles.dat:")
+            for char in characters:
+                logging.info(f"{char['index'] + 1}. {char['name']} ({char['sex']}, {char['skin']})")

@@ -48,6 +48,10 @@ The application follows a clear separation of concerns:
   - Use dependency injection to allow easy substitution of components
   - Create simple stub implementations for testing
   - Make each module easily replaceable to enhance testability
+- **NO MONKEYPATCH**: Avoid using pytest's `monkeypatch` fixture. Instead:
+  - Use dependency injection to pass in test-specific values
+  - Design functions to accept parameters for external dependencies
+  - Create test fixtures that set up the environment naturally
 - **Test-Driven Development (TDD)**: Write tests first, then implementation
 - **Integration over isolation**: Prefer testing real behavior over mocked interactions
 - **Stubs over mocks**: When isolation is needed, create minimal stub implementations
@@ -55,7 +59,7 @@ The application follows a clear separation of concerns:
 ### Example of preferred testing style:
 
 ```python
-# GOOD: pytest-style with stub
+# GOOD: pytest-style with stub and dependency injection
 def test_backup_creates_file(tmp_path):
     stub_profiles_path = tmp_path / "profiles.dat"
     stub_profiles_path.write_bytes(b"test data")
@@ -66,12 +70,24 @@ def test_backup_creates_file(tmp_path):
     assert backup_path.exists()
     assert backup_path.read_bytes() == b"test data"
 
+# GOOD: Using test parameters instead of monkeypatch
+def test_argparser_with_list_option():
+    # Instead of monkeypatch.setattr(sys, "argv", ["mb-app", "-l"])
+    parser = ArgParser()
+    args = parser.parser.parse_args(["-l"])
+    assert args.list is True
+
 # BAD: unittest-style with mocks
 class TestBackup(unittest.TestCase):
     @mock.patch('appearance.service.read_profiles')
     def test_backup(self, mock_read):
         mock_read.return_value = b"test"
         # ... etc
+
+# BAD: Using monkeypatch
+def test_something(monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["mb-app", "-l"])
+    # ... etc
 ```
 
 ### Architectural considerations for testability:
