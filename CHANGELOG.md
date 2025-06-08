@@ -15,91 +15,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.5] - 2025-06-08
 
-
-### Added
-
-### Changed
-
 ### Fixed
+- Fixed Hair Color range to extract full 6-bit value (0-63) instead of 2-bit (0-3)
 
 ## [0.3.4] - 2025-06-08
 
-
-### Added
-
-### Changed
-
 ### Fixed
+- Fixed bit-packed Age/Hair Color parsing at bytes 16-17
+- Updated binary format documentation
 
 ## [0.3.3] - 2025-06-08
 
-
-### Added
-
-### Changed
-
 ### Fixed
+- Fixed Age and Hair parsing from random bytes to correct Mount & Blade format offsets
+- Optimized performance
 
 ## [0.3.2] - 2025-06-08
 
-
-### Added
-
-### Changed
-
 ### Fixed
+- Fixed character listing when Mount & Blade corrupts header count field
 
 ## [0.3.1] - 2025-06-08
 
-
-### Added
-
 ### Changed
-
-### Fixed
+- Show exact file paths in operation messages instead of generic 'profiles.dat'
+- Reordered CLI arguments to prioritize listing over backup operations
 
 ## [0.3.0] - 2025-06-08
 
-
 ### Added
-
-### Changed
-
-### Fixed
+- Numbered naming strategy for character generation
 
 ## [0.2.0] - 2025-06-08
 
-
 ### Added
-
-### Changed
-
-### Fixed
+- Character listing feature with -l/--list flag
+- Clean CLI output for character information
 
 ## [0.1.2] - 2025-05-30
 
-
 ### Added
-
-### Changed
+- Automatic README usage update to version bump script
 
 ### Fixed
+- Fixed character generation sample reuse bug (bug #9)
+- Added comprehensive end-to-end tests for character generation
+- Updated binary file format documentation
 
 ## [0.1.1] - 2025-05-30
 
-
-### Added
-
-### Changed
-
 ### Fixed
+- Fixed character generation directory creation
+- Ensures profiles directory exists before generating characters
 
 ## [0.1.0] - 2025-05-30
 
-
 ### Added
+- Character deletion feature with -d/--delete flag
+- Support for deleting all characters or specific ones by name
+- Confirmation prompts for safety
 - Centralized version management in `appearance/__version__.py`
-- Character deletion feature (planned) - see BACKLOG.md
+- Version bump script for automated releases
 
 ### Changed
 - Version is now sourced from a single location for consistency
