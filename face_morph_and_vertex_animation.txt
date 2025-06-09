@@ -1,0 +1,507 @@
+Face Morphs and Vertex Animation
+
+In Mount and Blade, there are three different types of meshes that are used in the game.  The first type are static meshes. These are used for items, scene props etc.  The second type are the animated meshes which are bound to a skeleton, such as armour, horses etc.  Both of these types have been covered in a number of tutorials, and are fairly well explained, however the third type: vertex animation / morph targets is something that is perhaps unknown to most people except myself (and I guess Armagan too ;) ).  This type of mesh is currently used for 4 main things: Hands (open and closed states), Arrows (different states depending on how many arrows you have left), Animated map icons for parties, and perhaps most importantly, this format is used for defining the different face morphs that a player or NPC may uses to define the look of their face.  Unlike skeletal animation, vertex animation defines the location of each vertex of the mesh, for each frame.
+
+In this tutorial we will cover how to create a new face, with your own custom morphs that will be available to a new race, which will be selectable by the player, as well assignable to NPCs.  To simplify the tutorial we will start with the human face, and modify some of the mesh and some of the morph targets.  Although we only cover faces in the tutorial, all other meshes that use vertex animation can be created in almost exactly the same way.
+
+Here is an example of what we can do with vertex animation:
+
+This one shows what you can do by adding new head morphs, which is covered in this tutorial:  Download (DivX required)
+
+
+
+This one is an example of a custom map icon, created using the same process: Download (DivX required)
+
+
+Before starting this tutorial, you will need 3ds max, or another program capable of exporting VTA files (Half-life vertex animation files)
+
+I assume you have at least a little knowledge of both BRFEdit, and your modelling package of choice.
+
+If you are using 3ds max, you will need the following plugins/scripts:
+
+MAX6/7 SMD Exporter Place both plugins in your plugins directory.
+MD3 importing script  Place this in your 3ds max scripts / startup directory
+
+Currently you must use VTA format, however BRFEdit may allow MD3 importing, or individual frame importing in the future.
+
+
+1. Getting your mesh ready
+
+Firstly, we will get the human face into 3ds Max.  If you wish to use a face of your own, all you need to do is convert the mesh to an editable mesh (Right click > Convert to), then you can go to part 2, however I advise you to import the default head for size comparison anyway.
+
+Open up BRFEdit, select Open, then choose meshes_face_gen.brf.  Select the male_head mesh then click export, and save it as an MD3 file.
+
+Now open up 3ds Max, go and run the MD3 importer script:
+
+headTut1.jpg
+
+Select the MD3 file you exported, and import it.
+
+2. Making some morphs
+
+You should now see half of the head in the viewport.  Note that in M&B, heads are mirrored: both the mesh and the UV coordinates.  So keep this in mind if you are creating your own head mesh.
+
+Another step you will need to perform when creating your own head mesh is setting up the reference frames.  Ignore this step if you are just modifying the default head.
+In max, it will interpolate between frames if you do not have keys for every vertex defined for each frame.  To add keys for each vertex, you can do the following (let me know if there is a better way to do this)
+
+
+Select all the vertices
+Go to frame 1
+Right click the move button (next to rotate, scale etc) to open the translate window
+Change Absolute World translation slightly (eg if X is 0, make it 1)
+Then change the value you just modified back to what it was previously.
+
+Now you have 2 frames (frame 0 and frame 1) that are both reference poses, with keys for every vertex in your mesh.  Clone one of these for each new pose you add, and you should not get the problem you were having.
+
+We will now add some morph targets.  To do this we will copy one of the "reference" frames over an existing morph, and then modify it into a morph of our own.  Although it is possible to add morphs without replacing existing ones, the in game face editing window does not allow more than the default heads number of morphs.  So we will just replace some of them for now.
+
+Copy the first or last frame over a morph target you want to replace, by holding the shift key and dragging the first or last grey block in the timeline over the target frame.
+
+headTut2.jpg
+
+Then scroll to this frame, turn on "Auto Key" mode, and modify the mesh in vertex mode.  In this case I have made some pointy ears.
+
+headTut3.jpg
+
+Now, this frame will be used as the maximum morph for this attribute.  The minimum morph will be a weighting of the opposite of this (ie if you move a vertex up, the minimum will move it down a certain amount), so keep this in mind.
+
+You can modify as many morphs as you like, and adjust the mesh, adjust the UV co-ordinates etc.  I have also added some horns as another morph target:
+
+headTut4.jpg
+
+To do this, I simply attached the horns to the mesh, then added key-frames the frame before, and the frame after to hide the horns just under the skull.  In this way the horns will appear to grow out from the head as the user adjusts the slider.
+
+Once you are finished select file > export, and export as a VTA file.  If you have created your own head, ensure the first and last frames of your morphs are the same reference pose.
+
+You will also need to export the reference pose in OBJ format: simply scroll to the first or last frame, and export it.
+
+3. Getting it back into a BRF
+
+Open up BRFEdit, and import the obj file containing the heads reference pose.  On the import dialog, select a MD3 (50x) for the scale.  Add any materials etc for your mesh as normal, then import the VTA file whilst the mesh is selected.  On the VTA import dialog you will see a combo box containing a number of templates for importing vertex animations.  For now we will use default head, which imports the first and last reference poses, and the 18 morphs.  If you later want to try editing map icons, quivers, hands etc, change to the appropriate template.  If you want to, you can also create your own templates, by modifying one of the existing templates located in your editorData directory, and saving it as a new template.  However even if you create a custom face with fewer morph targets than the default face, you should still be able to use the default face template.
+
+You should now be able to scroll through all your morphs.  Little tip for viewing heads:  you may find the "flip" and "rotation lock" buttons at the bottom of the screen handy.
+
+Now save the BRF to your mod directory, ensuring you have placed your textures etc in the right locations.
+
+4. Using your new face!
+
+In this step I assume you know how to compile the python scripts, if not, go find a tutorial on it.  Note that I wrote this step without checking over it, so let me know if I forgot something.
+
+We will now add a new race that will make use of this new face.  To do this, we must modify module_skins.py.  Open the file up, and add some keys for your new race.  This is the list of keyframes to use for our list of morphs in the character creation screen.  If you have a custom face, make sure ALL entries listed here are included in your BRF, or the game will probably crash. 
+
+Here are mine:
+
+demon_face_keys = [
+(10,0,-0.8,0.6, "chin"),
+(20,0,-0.4,1.0, "jaw"),
+(30,0,-0.1,0.9, "mouth width"),
+
+(40,0, 1.1, -0.3, "mouth-nose dist"),
+
+(50,0, -0.5,1.0, "cheeks"),
+
+(60,0,-0.5,1.0, "nose height"),
+(70,0,-0.5,1.1, "nose width"),
+(80,0,1.5,-0.3, "nose size"),
+(90,0, 0.0,1.1, "nose bridge"),
+
+(100,0,1.0,-0.5, "cheek bone"),
+(110,0,1.0,0.0, "eye to eye dist"),
+(120,0,-0.2,1.0, "eye shape"),
+(130,0,-0.1,1.6, "eye depth"),
+(140,0,-0.2,1.0, "eyelids"),
+(150,0,-0.6,1.5, "eye width"),
+
+
+(160,0,1.0,-0.2, "eyebrow position"),
+(170,0,0,1.0, "horns"),
+(180,0,0,1.0, "ears"),
+(190,0,0.0,1.0, "post-edit"),
+]
+
+In this case, we have copied the male face keys, and modified the second last, and third last, that are our two new morphs. 
+The highlighted numbers represent the minimum and maximum morph.  A negative value will moph in the opposite direction to the morph targets we added, so the ears would shrivel up, and the horns would start sticking out of the other side of the head!  We probably don't want this, so we have made the minimum 0, and the maximum 1.0.
+We have also changed the tags for these attributes to "horns" and "ears".
+
+Now add the race itself, into the skins list:
+
+  (
+    "man", 0,
+    "man_body", "man_calf_l", "m_handL",
+    "demon head", demon_face_keys,
+    ["man_hair_s","man_hair_m","man_hair_n","man_hair_o","man_hair_u","man_hair_p","man_hair_r","man_hair_q","man_hair_t"], #man_hair_meshes
+    ["beard_a","beard_e","beard_d","beard_k","beard_l","beard_m","beard_n","beard_i","beard_j","beard_o","beard_p","beard_h","beard_g","beard_c","beard_f","beard_b",], #beard meshes
+    ["hair_blonde", "hair_red", "hair_brunette", "hair_black", "hair_white"], #hair textures
+    ["beard_blonde","beard_red","beard_brunette","beard_black","beard_white"], #beard_materials
+    [("demon_face_1",0xffebf0f0,["hair_blonde", "hair_red"]),
+    ("demon_face_2",0xfff0f0f0,["hair_black","hair_brunette","hair_red"]),
+    ], #demon_face_textures,
+    [(voice_die,"snd_man_die"),(voice_hit,"snd_man_hit"),(voice_grunt,"snd_man_grunt"),(voice_grunt_long,"snd_man_grunt_long"),(voice_yell,"snd_man_yell"),(voice_warcry,"snd_man_warcry"),(voice_victory,"snd_man_victory")], #voice sounds
+  ),
+
+In this case I have just copied the man skin entry, and changed it a little.  I will not go into the details of all the settings here.  Just make sure you change the mesh for the head, and make it use the face keys you have added.
+
+Next we will add to module_game_menus.py, so that the player can select this race.
+
+add the following below the entry for female selection in the game_menus list:
+
+      ("start_demon",[],"Demon",
+      [
+          (troop_set_type,0,3),
+          (assign,"$character_gender",0),
+          (troop_raise_attribute, "trp_player",ca_agility,1),
+          (troop_raise_attribute, "trp_player",ca_intelligence,1),
+          (jump_to_menu,"mnu_start_game_2")
+        ]
+      ),
+
+The important number here is the value for troop_set_type.  We can also use this value for other troops we wish to give this new face to.  In our case we have used 3, however if you add more races, you must use the corresponding number, depending on the races position in the skins list.
+
+We can also add a new class for our new race in the "start_game_2" list.
+
+
+You should now be able to fire up the game and try out your new face!
+Highelfwarrior
+Highelfwarrior
+Count
+
+
+Aug 18, 2006
+#2
+Thank you, thorgrim.
+
+
+I'll be trying this out soon. :)
+Janus
+Janus
+*spicy* *camper*
+Administrator
+
+
+Aug 18, 2006
+#3
+Damn, that's cool. I didn't realize you could add new morphs like horns, pretty amazing. So are you going to release your demon race? :-)
+Thorgrim
+Knight at Arms
+
+Aug 19, 2006
+#4
+Janus said:
+Damn, that's cool. I didn't realize you could add new morphs like horns, pretty amazing. So are you going to release your demon race? :-)
+
+I guess you haven't looked at the videos on the BRFEdit thread then ;)
+
+I could release it now I guess...  Though I was planning on finishing a couple more little things before releasing it.
+Janus
+Janus
+*spicy* *camper*
+Administrator
+
+
+Aug 19, 2006
+#5
+Thorgrim said:
+I guess you haven't looked at the videos on the BRFEdit thread then ;)
+Not the latest anyway; I didn't remember seeing an announcement about it in the thread so I hadn't checked the first post in some time. ;-)
+
+By all means, finish it up and then release it. No rush really. Looks perfect for Darkmod to me. :-)
+Highelfwarrior
+Highelfwarrior
+Count
+
+
+Aug 21, 2006
+#6
+Well, today I felt like trying this out..
+
+I've made my new mesh have morphs, though I stumbled upon a problem I think.
+
+lets say, morph 1 is normal , morph 2 moves the ear, and morph 3 moves the chin, then the chin will be moves in morph 2 aswell. like a normal animation..
+
+I don't know if this is supposed to happen, but whatever..thats not the main problem.
+
+after setting up several morphs, I was ready to try it out. I installed the plugins, and when I tried to export as VTA I couldn't find it..
+
+Then I saw that the plugin is for 3dsmax 6/7 but i'm using 3dsmax 8..
+
+well managed to export it anyway. now the whole thing won't work
+since its a completely new head, I have to do every key myself, wich results in it not working ingame
+
+at first, I could import the obj and vta, but it didn't work.. now I get an error that they don't match..
+
+I'll try some more and experiment in the hope it would work eventually :P
+
+btw, when importing the VTA, in what scale should I import it? 50x too?
+
+Thorgrim
+Knight at Arms
+
+Aug 22, 2006
+#7
+Yes, both at 50x, since that is the scale MD3s are exported at.  Make sure you export frame 0 as the obj, and export the whole range of frames to VTA.  Frame 0 of the VTA, and frame 0 of the obj need to match.
+
+And when making a new head, make sure you clone the reference pose for each new pose, that way you dont get any transitions. And of course when making the skin entry, only include the keys you have added, with the approptiate frame value for the first number.
+Highelfwarrior
+Highelfwarrior
+Count
+
+
+Aug 22, 2006
+#8
+Thorgrim said:
+And when making a new head, make sure you clone the reference pose for each new pose, that way you dont get any transitions.
+
+Well, I gave up trying for today :P
+
+What I did with the new mesh :
+
+You start out with no animation. I move the bar to the second frame, and change whatever  verts I want.(eg nose forward) then the first frame and the second one get created. first one looks like default, and second one looks like what I want it to look. (eg nose forward)
+then I shift drag the first frame to the third spot and change the verts in the third frame (e.g ..I move the chin 5 centimetres forward). when I then look at the second frame I see that the chin is moved 2.5 centimetres forward, and the first one 0 centimetres..
+
+It still works like a normal animation works, and I don't know what I'm doing wrong.
+
+when I know what I'm doing wrong here I'll try again tomorow and let you know if I have any error with getting ingame or importing in BRFedit
+
+Thanks in advance :)
+Thorgrim
+Knight at Arms
+
+Aug 22, 2006
+#9
+Ahh I see what you mean.
+
+Yes, this is because in max, when you move a few vertices, it will only create keys for those vertices.  So frame 1 will only have keys for the nose, then when you move the chin in frame 2 it will interpolate the chins position, so it will be between normal chin, and the big chin in frame 2.
+
+There is probably a better way to do this, but I'm not a max guru so here is how I get around it:
+
+Select all the vertices
+Go to frame 1
+Right click the translate button to open the translate window
+Change Absolute World translation slightly (eg if X is 0, make it 1)
+Then change the value you just modified back to what it was previously.
+
+Now you have 2 frames (frame 0 and frame 1) that are both reference poses, with keys for every vertex in your mesh.  Clone one of these for each new pose you add, and you should not get the problem you were having.
+
+I'll add this step to the tut...
+
+Looking forward to seeing how it goes :)
+Dyre Ironwill
+Regular
+
+Aug 22, 2006
+#10
+Been awhile since I've posted, but this thread caught my attention.
+
+Question, would it be possible to mod the game so that it edits the face while you play based on certain factors, I.E. moral decisions?  I'm thinking along the lines of Fable.  Would it be possible to create a mod where you make a character, and as you play and make decisions, your appearance will changed based on those decisions.  Scars might appear if you lose particular battles, your hair and beard may grow over time, or be cut if you go to a barber.  In short, is it possible to mod the game so that once you make your character, your appearance will only change based on things you do in game?
+Highelfwarrior
+Highelfwarrior
+Count
+
+
+Aug 23, 2006
+#11
+Thorgrim, just to let you know, everything is working out.
+
+first time I checked ingame it worked, but was all messed up though :P
+
+I'll do it more carefull sometime.
+
+Its just annoying that if you use your own mesh you have to redo everything in order to get it right..
+
+I wish there was a way to just copy the animation from the human head and work from that :P
+
+Dyre Ironwill :
+
+Thats a good idea. though, I have no idea if there is a workaround or an operation that lets you change face codes.. (you might be able to use a workaround with races like : old human , young human, etc.. and trigger a change in race when something happens or depending on the time the player plays)
+Thorgrim
+Knight at Arms
+
+Sep 11, 2006
+#12
+Highelfwarrior said:
+I wish there was a way to just copy the animation from the human head and work from that :P
+
+Yes... though its pretty hard, since vertex animation is per vertex, and your mesh will obviously have a completely different vertex structure.  You can always just export the human head and re shape it though.
+
+
+Dyre Ironwill said:
+Been awhile since I've posted, but this thread caught my attention.
+
+Question, would it be possible to mod the game so that it edits the face while you play based on certain factors, I.E. moral decisions?  I'm thinking along the lines of Fable.  Would it be possible to create a mod where you make a character, and as you play and make decisions, your appearance will changed based on those decisions.  Scars might appear if you lose particular battles, your hair and beard may grow over time, or be cut if you go to a barber.  In short, is it possible to mod the game so that once you make your character, your appearance will only change based on things you do in game?
+
+Not at the moment, no.
+Chilly5
+Chilly5
+Master Knight
+
+
+Sep 11, 2006
+#13
+Thorgrim said:
+Face Morphs and Vertex Animation
+4. Using your new face!
+
+In this step I assume you know how to compile the python scripts, if not, go find a tutorial on it.  Note that I wrote this step without checking over it, so let me know if I forgot something.
+
+We will now add a new race that will make use of this new face.  To do this, we must modify module_skins.py.  Open the file up, and add some keys for your new race.  Here are mine:
+
+demon_face_keys = [
+(10,0,-0.8,0.6, "chin"),
+(20,0,-0.4,1.0, "jaw"),
+(30,0,-0.1,0.9, "mouth width"),
+
+(40,0, 1.1, -0.3, "mouth-nose dist"),
+
+(50,0, -0.5,1.0, "cheeks"),
+
+(60,0,-0.5,1.0, "nose height"),
+(70,0,-0.5,1.1, "nose width"),
+(80,0,1.5,-0.3, "nose size"),
+(90,0, 0.0,1.1, "nose bridge"),
+
+(100,0,1.0,-0.5, "cheek bone"),
+(110,0,1.0,0.0, "eye to eye dist"),
+(120,0,-0.2,1.0, "eye shape"),
+(130,0,-0.1,1.6, "eye depth"),
+(140,0,-0.2,1.0, "eyelids"),
+(150,0,-0.6,1.5, "eye width"),
+
+
+(160,0,1.0,-0.2, "eyebrow position"),
+(170,0,0,1.0, "horns"),
+(180,0,0,1.0, "ears"),
+(190,0,0.0,1.0, "post-edit"),
+]
+
+In this case, we have copied the male face keys, and modified the second last, and third last, that are our two new morphs. 
+The highlighted numbers represent the minimum and maximum morph.  A negative value will moph in the opposite direction to the morph targets we added, so the ears would shrivel up, and the horns would start sticking out of the other side of the head!  We probably don't want this, so we have made the minimum 0, and the maximum 1.0.
+We have also changed the tags for these attributes to "horns" and "ears".
+
+Now add the race itself, into the skins list:
+
+  (
+    "man", 0,
+    "man_body", "man_calf_l", "m_handL",
+    "demon head", demon_face_keys,
+    ["man_hair_s","man_hair_m","man_hair_n","man_hair_o","man_hair_u","man_hair_p","man_hair_r","man_hair_q","man_hair_t"], #man_hair_meshes
+    ["beard_a","beard_e","beard_d","beard_k","beard_l","beard_m","beard_n","beard_i","beard_j","beard_o","beard_p","beard_h","beard_g","beard_c","beard_f","beard_b",], #beard meshes
+    ["hair_blonde", "hair_red", "hair_brunette", "hair_black", "hair_white"], #hair textures
+    ["beard_blonde","beard_red","beard_brunette","beard_black","beard_white"], #beard_materials
+    [("demon_face_1",0xffebf0f0,["hair_blonde", "hair_red"]),
+     ("demon_face_2",0xfff0f0f0,["hair_black","hair_brunette","hair_red"]),
+     ], #demon_face_textures,
+    [(voice_die,"snd_man_die"),(voice_hit,"snd_man_hit"),(voice_grunt,"snd_man_grunt"),(voice_grunt_long,"snd_man_grunt_long"),(voice_yell,"snd_man_yell"),(voice_warcry,"snd_man_warcry"),(voice_victory,"snd_man_victory")], #voice sounds
+  ),
+
+In this case I have just copied the man skin entry, and changed it a little.  I will not go into the details of all the settings here.  Just make sure you change the mesh for the head, and make it use the face keys you have added.
+
+Next we will add to module_game_menus.py, so that the player can select this race.
+
+add the following below the entry for female selection in the game_menus list:
+
+      ("start_demon",[],"Demon",
+       [
+           (troop_set_type,0,3),
+           (assign,"$character_gender",0),
+           (troop_raise_attribute, "trp_player",ca_agility,1),
+           (troop_raise_attribute, "trp_player",ca_intelligence,1),
+           (jump_to_menu,"mnu_start_game_2")
+        ]
+       ),
+
+The important number here is the value for troop_set_type.  We can also use this value for other troops we wish to give this new face to.  In our case we have used 3, however if you add more races, you must use the corresponding number, depending on the races position in the skins list.
+
+We can also add a new class for our new race in the "start_game_2" list.
+
+
+You should now be able to fire up the game and try out your new face!
+Click to expand...
+Erm, I follows these steps on down, because I already have a head-face model thing, whats weird is when I start up the game, it acts like nothing happened...what am i doing wrong? I just started python like, an hour ago.
+
+w00t nvm, I kinda got it to work, I just didnt do the build_module thing, but now the game crashes when I choose "cyclops" from the starting menu.
+Highelfwarrior
+Highelfwarrior
+Count
+
+
+Sep 11, 2006
+#14
+Make sure your race is linked to the actuall race in the game_menu.
+
+In english, the number in you game_menu had to be equal to the number of race your race is in skins.py.
+
+Therefore, human male is the first (1) human female is the second (2) undead third (3)  and anything added gets 4,5,6, etc..
+
+You can change the order (for exaple you put cyclops instead of undead, then cyclops will be 3)
+But I suggest you don't and just keep it simple. Check the values and if they are matching or not. If they don't, fix it and the crash will be gone, if there's no problem there, then I don't know whats going on :P..
+
+maybe a wrong tuple or a syntax error or something.
+Chilly5
+Chilly5
+Master Knight
+
+
+Sep 11, 2006
+#15
+Meh, I guess I'll just get rid of the cyclops race and put in a invisible face texture for male.
+Chilly5
+Chilly5
+Master Knight
+
+
+Sep 16, 2006
+#16
+darn, Im tried to get a skeleton race in game. Im borrowing from Hero&blade. Everything is supposedly dandy, i start up the game, start a new char, select skeleton from menu, select my attributes, etc. But then, when I get to the face, it CTDs. Im pretty sure theres nothing wrong with module_game_menus, cause it worked fine, skins Im not so sure.
+This is the tuple I added for "skins"
+  (
+    "skeleton", 0,
+    "skeleton", "skeleton_calf_L", "skeleton_handL",
+    "skeleton_head", man_face_keys,
+    [], #man_hair_meshes
+    [], #beard meshes
+    [], #hair textures
+    [], #beard_materials
+    [("undeadface_a_skeleton",0xffffffff,[]),
+    ], #man_face_textures,
+    [(voice_die,"snd_man_die"),(voice_hit,"snd_man_hit"),(voice_grunt,"snd_man_grunt"),(voice_grunt_long,"snd_man_grunt_long"),(voice_yell,"snd_man_yell"),(voice_warcry,"snd_man_warcry"),(voice_victory,"snd_man_victory")], #voice sounds
+  ),
+
+Originally "man_face_keys" was replaced by "skeleton_keys" but after checking some other mods out, I decided not to use skeleton keys. All the models and textures are here. However, the face in the brf uses a vanilla face texture on it, when I deselect "face" it gives me the right texture, but the model is cut in half.
+I think the problem has something to do with the skeleton face texture being in the catagorey of "face" but I cant seem to find anything to do that.
+Thorgrim
+Knight at Arms
+
+Sep 16, 2006
+#17
+Well, your problem is with the keys.
+
+Looking back on my tutorial I wasn't clear enough about his I guess:
+
+The face keys must correspond to the vertex animation keys in your BRF.  I am guessing the skeleton face has no vertex animation, so if that is the case, you can't have any morph keys, since there are no morphs to use.  Just do as the undead face does, and have an empty list of keys defined for it.
+
+Re. the "Face" flag for BRFEdit:  Perhaps I should just remove it, since its a bit confusing... it's really just a visual thing to display what your face might look like in game.  It just mirrors the face and puts one of the face textures on it.
+Chilly5
+Chilly5
+Master Knight
+
+
+Sep 16, 2006
+#18
+It still crashes  :?
+Cartread
+Cartread
+Sergeant at Arms
+
+
+Sep 19, 2006
+#19
+After reading this, I tried having a skeleton character myself just now, but to no avail.
+The skeleton head can't be used because it has no vertex animation at all.  I used a .obj or .smd for simplicity.  There's no way your getting past the face editing screen because the skeleton head isn't even animate-able.
+I wonder if any .vat or .md3 or animated file would work?(the Native undead head isn't editable, but it is an animated file)
+You can test with the undead head if you like, then maybe you could make the skeleton head into an animated file or something.
+Thorgrim
+Knight at Arms
+
+Sep 19, 2006
+#20
+Yes, just add some keyframes that are exactly the same, then export to VTA, and import that over your skeleton head.  It should then work.  As you will see if you look at the undead head, it also has morphs (though all are the same) just like the male head has morphs.

@@ -240,7 +240,9 @@ export class FaceViewer {
             shininess: 10,
             side: THREE.DoubleSide,
             transparent: false,
-            opacity: 1.0
+            opacity: 1.0,
+            morphTargets: true,  // Enable morph targets
+            morphNormals: true   // Enable normal morphing
         });
         
         const fullHeadMesh = new THREE.Mesh(fullGeometry, material);
@@ -268,65 +270,191 @@ export class FaceViewer {
         // Store original positions
         this.originalPositions = new Float32Array(position.array);
         
-        // Create morph targets
+        // Create morph targets - each stores DELTAS from original position
         const morphTargets = [];
         
-        // Morph 1: Chin Size (move bottom vertices down/up)
-        const chinMorph = new Float32Array(position.count * 3);
-        for (let i = 0; i < position.count; i++) {
-            const y = position.getY(i);
-            if (y < -0.3) { // Bottom part of head
-                chinMorph[i * 3] = 0;
-                chinMorph[i * 3 + 1] = -0.15; // Move down
-                chinMorph[i * 3 + 2] = 0.05; // Slightly forward
-            }
-        }
-        
-        // Morph 2: Nose Length (move nose area forward)
-        const noseMorph = new Float32Array(position.count * 3);
-        for (let i = 0; i < position.count; i++) {
-            const z = position.getZ(i);
-            const y = position.getY(i);
-            if (z > 0.3 && Math.abs(y) < 0.2) { // Nose area
-                noseMorph[i * 3] = 0;
-                noseMorph[i * 3 + 1] = 0;
-                noseMorph[i * 3 + 2] = 0.1; // Move forward
-            }
-        }
-        
-        // Morph 3: Cheek Width (widen middle face)
-        const cheekMorph = new Float32Array(position.count * 3);
+        // Morph 0: Chin Size (affects chin height and projection)
+        const chinMorph = new Float32Array(position.array); // Start with original positions
         for (let i = 0; i < position.count; i++) {
             const x = position.getX(i);
             const y = position.getY(i);
-            if (Math.abs(x) > 0.2 && Math.abs(y) < 0.2) { // Cheek area
-                cheekMorph[i * 3] = x > 0 ? 0.1 : -0.1; // Widen
-                cheekMorph[i * 3 + 1] = 0;
-                cheekMorph[i * 3 + 2] = 0;
+            const z = position.getZ(i);
+            
+            // Target lower face area
+            if (y < -0.2) { 
+                const influence = Math.abs(y + 0.2) / 0.3; // Smooth falloff
+                chinMorph[i * 3] = x; // Keep X same
+                chinMorph[i * 3 + 1] = y - (0.15 * influence); // Move down
+                chinMorph[i * 3 + 2] = z + (0.05 * influence); // Slightly forward
+            } else {
+                // Keep original position for unaffected vertices
+                chinMorph[i * 3] = x;
+                chinMorph[i * 3 + 1] = y;
+                chinMorph[i * 3 + 2] = z;
             }
         }
         
-        // Morph 4: Forehead Height (move top vertices up)
-        const foreheadMorph = new Float32Array(position.count * 3);
+        // Morph 1: Nose Length (nose projection)
+        const noseMorph = new Float32Array(position.array);
         for (let i = 0; i < position.count; i++) {
+            const x = position.getX(i);
             const y = position.getY(i);
-            if (y > 0.3) { // Top part of head
-                foreheadMorph[i * 3] = 0;
-                foreheadMorph[i * 3 + 1] = 0.1; // Move up
-                foreheadMorph[i * 3 + 2] = 0;
+            const z = position.getZ(i);
+            
+            // Target nose area (front-center of face)
+            if (z > 0.2 && Math.abs(y) < 0.15 && Math.abs(x) < 0.1) {
+                const influence = (z - 0.2) / 0.2;
+                noseMorph[i * 3] = x;
+                noseMorph[i * 3 + 1] = y;
+                noseMorph[i * 3 + 2] = z + (0.12 * influence); // Project forward
+            } else {
+                noseMorph[i * 3] = x;
+                noseMorph[i * 3 + 1] = y;
+                noseMorph[i * 3 + 2] = z;
             }
         }
         
-        // Add more morphs for the full 8
-        const jawMorph = new Float32Array(position.count * 3);
-        const mouthMorph = new Float32Array(position.count * 3);
-        const eyeMorph = new Float32Array(position.count * 3);
-        const browMorph = new Float32Array(position.count * 3);
+        // Morph 2: Cheek Width (face width at cheekbone level)
+        const cheekMorph = new Float32Array(position.array);
+        for (let i = 0; i < position.count; i++) {
+            const x = position.getX(i);
+            const y = position.getY(i);
+            const z = position.getZ(i);
+            
+            // Target cheek area (sides of face at eye level)
+            if (Math.abs(x) > 0.15 && Math.abs(y) < 0.2 && Math.abs(y) > 0.05) {
+                const influence = (Math.abs(x) - 0.15) / 0.2;
+                const direction = x > 0 ? 1 : -1;
+                cheekMorph[i * 3] = x + (direction * 0.1 * influence); // Widen
+                cheekMorph[i * 3 + 1] = y;
+                cheekMorph[i * 3 + 2] = z;
+            } else {
+                cheekMorph[i * 3] = x;
+                cheekMorph[i * 3 + 1] = y;
+                cheekMorph[i * 3 + 2] = z;
+            }
+        }
+        
+        // Morph 3: Eye Size (eye area scale)
+        const eyeMorph = new Float32Array(position.array);
+        for (let i = 0; i < position.count; i++) {
+            const x = position.getX(i);
+            const y = position.getY(i);
+            const z = position.getZ(i);
+            
+            // Target eye socket area
+            if (Math.abs(x) > 0.05 && Math.abs(x) < 0.25 && 
+                y > 0.05 && y < 0.2 && z > 0.1) {
+                const eyeCenterX = x > 0 ? 0.15 : -0.15;
+                const eyeCenterY = 0.12;
+                const distFromCenter = Math.sqrt(
+                    Math.pow(x - eyeCenterX, 2) + 
+                    Math.pow(y - eyeCenterY, 2)
+                );
+                if (distFromCenter < 0.1) {
+                    const influence = 1 - (distFromCenter / 0.1);
+                    // Scale away from eye center
+                    eyeMorph[i * 3] = x + ((x - eyeCenterX) * 0.3 * influence);
+                    eyeMorph[i * 3 + 1] = y + ((y - eyeCenterY) * 0.3 * influence);
+                    eyeMorph[i * 3 + 2] = z;
+                } else {
+                    eyeMorph[i * 3] = x;
+                    eyeMorph[i * 3 + 1] = y;
+                    eyeMorph[i * 3 + 2] = z;
+                }
+            } else {
+                eyeMorph[i * 3] = x;
+                eyeMorph[i * 3 + 1] = y;
+                eyeMorph[i * 3 + 2] = z;
+            }
+        }
+        
+        // Morph 4: Forehead Height 
+        const foreheadMorph = new Float32Array(position.array);
+        for (let i = 0; i < position.count; i++) {
+            const x = position.getX(i);
+            const y = position.getY(i);
+            const z = position.getZ(i);
+            
+            // Target forehead area
+            if (y > 0.2) {
+                const influence = (y - 0.2) / 0.3;
+                foreheadMorph[i * 3] = x;
+                foreheadMorph[i * 3 + 1] = y + (0.1 * influence); // Move up
+                foreheadMorph[i * 3 + 2] = z - (0.03 * influence); // Slightly back
+            } else {
+                foreheadMorph[i * 3] = x;
+                foreheadMorph[i * 3 + 1] = y;
+                foreheadMorph[i * 3 + 2] = z;
+            }
+        }
+        
+        // Morph 5: Jaw Width (lower face width)
+        const jawMorph = new Float32Array(position.array);
+        for (let i = 0; i < position.count; i++) {
+            const x = position.getX(i);
+            const y = position.getY(i);
+            const z = position.getZ(i);
+            
+            // Target jaw area
+            if (Math.abs(x) > 0.1 && y < -0.1 && y > -0.35) {
+                const influence = Math.abs(y + 0.1) / 0.25;
+                const direction = x > 0 ? 1 : -1;
+                jawMorph[i * 3] = x + (direction * 0.12 * influence);
+                jawMorph[i * 3 + 1] = y;
+                jawMorph[i * 3 + 2] = z;
+            } else {
+                jawMorph[i * 3] = x;
+                jawMorph[i * 3 + 1] = y;
+                jawMorph[i * 3 + 2] = z;
+            }
+        }
+        
+        // Morph 6: Mouth Width
+        const mouthMorph = new Float32Array(position.array);
+        for (let i = 0; i < position.count; i++) {
+            const x = position.getX(i);
+            const y = position.getY(i);
+            const z = position.getZ(i);
+            
+            // Target mouth area
+            if (Math.abs(x) < 0.15 && y > -0.2 && y < -0.05 && z > 0.25) {
+                const influence = 1 - (Math.abs(x) / 0.15);
+                const direction = x > 0 ? 1 : -1;
+                mouthMorph[i * 3] = x + (direction * 0.08 * influence);
+                mouthMorph[i * 3 + 1] = y;
+                mouthMorph[i * 3 + 2] = z;
+            } else {
+                mouthMorph[i * 3] = x;
+                mouthMorph[i * 3 + 1] = y;
+                mouthMorph[i * 3 + 2] = z;
+            }
+        }
+        
+        // Morph 7: Brow Height
+        const browMorph = new Float32Array(position.array);
+        for (let i = 0; i < position.count; i++) {
+            const x = position.getX(i);
+            const y = position.getY(i);
+            const z = position.getZ(i);
+            
+            // Target brow area
+            if (Math.abs(x) < 0.25 && y > 0.15 && y < 0.25 && z > 0.15) {
+                const influence = 1 - Math.abs(y - 0.2) / 0.05;
+                browMorph[i * 3] = x;
+                browMorph[i * 3 + 1] = y + (0.05 * influence); // Raise brow
+                browMorph[i * 3 + 2] = z + (0.03 * influence); // Project forward
+            } else {
+                browMorph[i * 3] = x;
+                browMorph[i * 3 + 1] = y;
+                browMorph[i * 3 + 2] = z;
+            }
+        }
         
         // Set up morph attributes
         const morphAttributes = [
-            chinMorph, noseMorph, cheekMorph, foreheadMorph,
-            jawMorph, mouthMorph, eyeMorph, browMorph
+            chinMorph, noseMorph, cheekMorph, eyeMorph,
+            foreheadMorph, jawMorph, mouthMorph, browMorph
         ];
         
         geometry.morphAttributes.position = [];
@@ -336,15 +464,51 @@ export class FaceViewer {
             geometry.morphAttributes.position.push(attribute);
         });
         
-        // Initialize morph target influences
+        // Initialize morph target influences for all 27 morphs
+        // We only have 8 actual morph targets, but we'll map the 27 sliders to them
         mainMesh.morphTargetInfluences = new Array(8).fill(0);
+        
+        // Store all 27 morph values separately
+        this.allMorphValues = new Array(27).fill(0);
+        
+        // Map which morphs affect which morph targets
+        this.morphMapping = {
+            0: [2],      // Face Width -> cheek morph
+            1: [0, 4],   // Face Ratio -> chin + forehead
+            2: [2, 5],   // Face Depth -> cheek + jaw
+            3: [4],      // Temple Width -> forehead
+            4: [7],      // Eyebrow Shape -> brow
+            5: [7],      // Eyebrow Depth -> brow
+            6: [7],      // Eyebrow Height -> brow
+            7: [7],      // Eyebrow Position -> brow
+            8: [3],      // Eyelids -> eye
+            9: [3],      // Eye Depth -> eye
+            10: [3],     // Eye Shape -> eye
+            11: [3],     // Eye to Eye Dist -> eye
+            12: [3],     // Eye Width -> eye
+            13: [2],     // Cheek Bones -> cheek
+            14: [1],     // Nose Bridge -> nose
+            15: [1],     // Nose Shape -> nose
+            16: [1],     // Nose Size -> nose
+            17: [1],     // Nose Width -> nose
+            18: [1],     // Nose Height -> nose
+            19: [2],     // Cheeks -> cheek
+            20: [6],     // Mouth Width -> mouth
+            21: [6],     // Mouth-Nose Distance -> mouth
+            22: [5],     // Jaw Position -> jaw
+            23: [5],     // Jaw Width -> jaw
+            24: [0],     // Chin Forward -> chin
+            25: [0],     // Chin Shape -> chin
+            26: [0]      // Chin Size -> chin
+        };
         
         // Update the material to support morphing
         if (mainMesh.material) {
             mainMesh.material.morphTargets = true;
+            mainMesh.material.needsUpdate = true;
         }
         
-        console.log('Created 8 synthetic morph targets');
+        console.log('Created 8 synthetic morph targets with proper deltas');
     }
 
     applyMaterials(object) {
@@ -622,6 +786,42 @@ export class FaceViewer {
             this.headMesh.material.specular.setHex(0x222222);
             this.headMesh.material.needsUpdate = true;
             console.log(`Applied default skin color (no texture available for ${this.currentGender} ${tone})`);
+        }
+        
+        // Ensure morph targets stay enabled
+        this.headMesh.material.morphTargets = true;
+        this.headMesh.material.morphNormals = true;
+    }
+    
+    // Apply morph value from the 27 sliders to the 8 actual morph targets
+    applyMorphValue(index, value) {
+        if (!this.headMesh || !this.headMesh.morphTargetInfluences) return;
+        
+        // Store the value
+        if (this.allMorphValues) {
+            this.allMorphValues[index] = value;
+        }
+        
+        // If we have mapping, apply to the relevant morph targets
+        if (this.morphMapping && this.morphMapping[index]) {
+            const targets = this.morphMapping[index];
+            targets.forEach(targetIndex => {
+                if (targetIndex < this.headMesh.morphTargetInfluences.length) {
+                    // Average multiple inputs that map to the same target
+                    let sum = 0;
+                    let count = 0;
+                    for (let i = 0; i < 27; i++) {
+                        if (this.morphMapping[i] && this.morphMapping[i].includes(targetIndex)) {
+                            sum += (this.allMorphValues[i] || 0);
+                            count++;
+                        }
+                    }
+                    this.headMesh.morphTargetInfluences[targetIndex] = count > 0 ? sum / count : 0;
+                }
+            });
+        } else if (index < 8) {
+            // Fallback: direct mapping for first 8
+            this.headMesh.morphTargetInfluences[index] = value;
         }
     }
 }

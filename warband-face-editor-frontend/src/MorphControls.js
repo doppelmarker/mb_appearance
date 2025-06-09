@@ -3,7 +3,7 @@ import { FaceCodeParser } from './FaceCodeParser.js';
 export class MorphControls {
     constructor(faceViewer) {
         this.faceViewer = faceViewer;
-        this.morphValues = new Array(8).fill(0);
+        this.morphValues = new Array(27).fill(0);
         this.container = this.createUI();
     }
     
@@ -18,7 +18,9 @@ export class MorphControls {
             color: white;
             font-family: 'Courier New', monospace;
             border-radius: 8px;
-            max-width: 280px;
+            width: 320px;
+            max-height: 90vh;
+            overflow-y: auto;
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         `;
         
@@ -28,10 +30,35 @@ export class MorphControls {
         title.style.cssText = 'margin: 0 0 15px 0; font-size: 16px; text-align: center;';
         container.appendChild(title);
         
-        // Morph sliders
+        // All 27 morph sliders as shown in the game
         const morphNames = [
-            'Chin Size', 'Nose Length', 'Cheek Width', 'Eye Size',
-            'Forehead Height', 'Jaw Width', 'Mouth Width', 'Brow Height'
+            'Face Width',           // 0
+            'Face Ratio',           // 1
+            'Face Depth',           // 2
+            'Temple Width',         // 3
+            'Eyebrow Shape',        // 4
+            'Eyebrow Depth',        // 5
+            'Eyebrow Height',       // 6
+            'Eyebrow Position',     // 7
+            'Eyelids',              // 8
+            'Eye Depth',            // 9
+            'Eye Shape',            // 10
+            'Eye to Eye Dist',      // 11
+            'Eye Width',            // 12
+            'Cheek Bones',          // 13
+            'Nose Bridge',          // 14
+            'Nose Shape',           // 15
+            'Nose Size',            // 16
+            'Nose Width',           // 17
+            'Nose Height',          // 18
+            'Cheeks',               // 19
+            'Mouth Width',          // 20
+            'Mouth-Nose Distance',  // 21
+            'Jaw Position',         // 22
+            'Jaw Width',            // 23
+            'Chin Forward',         // 24
+            'Chin Shape',           // 25
+            'Chin Size'             // 26
         ];
         
         this.sliders = [];
@@ -115,7 +142,7 @@ export class MorphControls {
         `;
         
         const buttonDiv = document.createElement('div');
-        buttonDiv.style.cssText = 'display: flex; gap: 10px; margin-top: 8px;';
+        buttonDiv.style.cssText = 'display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;';
         
         const applyButton = document.createElement('button');
         applyButton.textContent = 'Apply Code';
@@ -149,6 +176,22 @@ export class MorphControls {
         copyButton.onmouseover = () => copyButton.style.background = '#1976D2';
         copyButton.onmouseout = () => copyButton.style.background = '#2196F3';
         
+        const randomizeButton = document.createElement('button');
+        randomizeButton.textContent = 'Randomize';
+        randomizeButton.style.cssText = `
+            flex: 1;
+            padding: 8px;
+            background: #FF9800;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+        `;
+        randomizeButton.onmouseover = () => randomizeButton.style.background = '#F57C00';
+        randomizeButton.onmouseout = () => randomizeButton.style.background = '#FF9800';
+        
         applyButton.onclick = () => {
             try {
                 const code = this.faceCodeInput.value.trim();
@@ -167,6 +210,11 @@ export class MorphControls {
             this.faceCodeInput.select();
             document.execCommand('copy');
             this.showMessage('Copied to clipboard!', 'success');
+        };
+        
+        randomizeButton.onclick = () => {
+            this.randomizeFace();
+            this.showMessage('Randomized face!', 'success');
         };
         
         // Test codes dropdown
@@ -215,6 +263,7 @@ export class MorphControls {
         faceCodeDiv.appendChild(this.faceCodeInput);
         buttonDiv.appendChild(applyButton);
         buttonDiv.appendChild(copyButton);
+        buttonDiv.appendChild(randomizeButton);
         faceCodeDiv.appendChild(buttonDiv);
         faceCodeDiv.appendChild(testCodesDiv);
         
@@ -247,7 +296,7 @@ export class MorphControls {
             margin-bottom: 10px;
         `;
         
-        // Add styles for option elements
+        // Add styles for option elements and scrollbar
         const optionStyle = document.createElement('style');
         optionStyle.textContent = `
             select option {
@@ -258,8 +307,26 @@ export class MorphControls {
             select option:hover {
                 background-color: #555;
             }
+            /* Custom scrollbar for the controls */
+            .morph-controls::-webkit-scrollbar {
+                width: 8px;
+            }
+            .morph-controls::-webkit-scrollbar-track {
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 4px;
+            }
+            .morph-controls::-webkit-scrollbar-thumb {
+                background: rgba(255, 255, 255, 0.3);
+                border-radius: 4px;
+            }
+            .morph-controls::-webkit-scrollbar-thumb:hover {
+                background: rgba(255, 255, 255, 0.5);
+            }
         `;
         document.head.appendChild(optionStyle);
+        
+        // Add class for styling
+        container.className = 'morph-controls';
         
         // Define skin options based on gender
         const skinOptions = {
@@ -323,14 +390,13 @@ export class MorphControls {
     }
     
     updateMorph(index, value) {
-        if (this.faceViewer.headMesh?.morphTargetInfluences) {
-            this.faceViewer.headMesh.morphTargetInfluences[index] = value;
-        }
+        // Use the new applyMorphValue method that handles mapping
+        this.faceViewer.applyMorphValue(index, value);
     }
     
     applyMorphs(morphValues) {
         morphValues.forEach((value, index) => {
-            if (index < 8) {
+            if (index < 27) {
                 this.morphValues[index] = value;
                 this.sliders[index].value = value;
                 document.getElementById(`morph-value-${index}`).textContent = value;
@@ -343,6 +409,31 @@ export class MorphControls {
     updateFaceCode() {
         const code = FaceCodeParser.generate(this.morphValues);
         this.faceCodeInput.value = code;
+    }
+    
+    randomizeFace() {
+        // Generate random values for all 27 morphs
+        const randomMorphs = [];
+        for (let i = 0; i < 27; i++) {
+            // Use different randomization strategies for different features
+            let value;
+            
+            // For most features, use a bell curve distribution (more likely to get moderate values)
+            if (i < 20) {
+                // Generate two random numbers and average them for a more natural distribution
+                const r1 = Math.random();
+                const r2 = Math.random();
+                value = Math.round((r1 + r2) / 2 * 7);
+            } else {
+                // For jaw/chin features, use full range
+                value = Math.floor(Math.random() * 8);
+            }
+            
+            randomMorphs.push(value);
+        }
+        
+        // Apply the random morphs
+        this.applyMorphs(randomMorphs);
     }
     
     showMessage(text, type = 'info') {
