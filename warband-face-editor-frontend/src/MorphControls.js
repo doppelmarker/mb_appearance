@@ -230,48 +230,96 @@ export class MorphControls {
         const skinDiv = document.createElement('div');
         
         const skinLabel = document.createElement('div');
-        skinLabel.textContent = 'Skin Tone:';
+        skinLabel.textContent = 'Skin Type:';
         skinLabel.style.cssText = 'font-size: 12px; margin-bottom: 10px; font-weight: bold;';
         
-        const skinButtons = document.createElement('div');
-        skinButtons.style.cssText = 'display: flex; gap: 8px;';
+        // Create dropdown for skin selection
+        const skinSelect = document.createElement('select');
+        skinSelect.style.cssText = `
+            width: 100%;
+            padding: 8px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid #555;
+            color: white;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        `;
         
-        const tones = [
-            { name: 'Light', value: 'white', color: '#ffdbac' },
-            { name: 'Tan', value: 'tan', color: '#d4a373' },
-            { name: 'Dark', value: 'dark', color: '#8b6239' }
-        ];
+        // Add styles for option elements
+        const optionStyle = document.createElement('style');
+        optionStyle.textContent = `
+            select option {
+                background-color: #333;
+                color: white;
+                padding: 5px;
+            }
+            select option:hover {
+                background-color: #555;
+            }
+        `;
+        document.head.appendChild(optionStyle);
         
-        tones.forEach(tone => {
-            const button = document.createElement('button');
-            button.textContent = tone.name;
-            button.style.cssText = `
-                flex: 1;
-                padding: 8px;
-                background: ${tone.color};
-                color: ${tone.value === 'dark' ? 'white' : 'black'};
-                border: none;
-                border-radius: 4px;
-                cursor: pointer;
-                font-size: 11px;
-                font-weight: bold;
-                transition: transform 0.1s;
-            `;
+        // Define skin options based on gender
+        const skinOptions = {
+            male: [
+                { name: 'Young', value: 'young' },
+                { name: 'Young Tan', value: 'young2' },
+                { name: 'Young Dark', value: 'young3' },
+                { name: 'Warrior', value: 'warrior' },
+                { name: 'Middle Aged', value: 'midage' },
+                { name: 'Weathered', value: 'midage2' },
+                { name: 'Rugged', value: 'rugged' },
+                { name: 'African', value: 'african' }
+            ],
+            female: [
+                { name: 'Young', value: 'young' },
+                { name: 'Pretty', value: 'pretty' },
+                { name: 'Mature', value: 'mature' },
+                { name: 'Brown', value: 'brown' },
+                { name: 'African', value: 'african' }
+            ]
+        };
+        
+        // Function to update dropdown options based on gender
+        this.updateSkinOptions = (gender) => {
+            skinSelect.innerHTML = '';
+            const options = skinOptions[gender] || skinOptions.male;
             
-            button.onmouseover = () => button.style.transform = 'scale(1.05)';
-            button.onmouseout = () => button.style.transform = 'scale(1)';
+            options.forEach(option => {
+                const opt = document.createElement('option');
+                opt.value = option.value;
+                opt.textContent = option.name;
+                skinSelect.appendChild(opt);
+            });
             
-            button.onclick = () => {
-                this.faceViewer.setSkinTone(tone.value);
-                this.showMessage(`Skin tone: ${tone.name}`, 'info');
-            };
-            
-            skinButtons.appendChild(button);
-        });
+            // Set to current skin tone if available
+            if (this.faceViewer.currentSkinTone && 
+                options.some(opt => opt.value === this.faceViewer.currentSkinTone)) {
+                skinSelect.value = this.faceViewer.currentSkinTone;
+            } else {
+                // Default to first option
+                skinSelect.value = options[0].value;
+                this.faceViewer.setSkinTone(options[0].value);
+            }
+        };
+        
+        // Initial population
+        this.updateSkinOptions(this.faceViewer.currentGender);
+        
+        skinSelect.onchange = (e) => {
+            this.faceViewer.setSkinTone(e.target.value);
+            const selectedOption = skinSelect.options[skinSelect.selectedIndex];
+            this.showMessage(`Skin type: ${selectedOption.textContent}`, 'info');
+        };
         
         skinDiv.appendChild(skinLabel);
-        skinDiv.appendChild(skinButtons);
+        skinDiv.appendChild(skinSelect);
         container.appendChild(skinDiv);
+        
+        // Store reference for gender switching
+        this.skinSelect = skinSelect;
     }
     
     updateMorph(index, value) {

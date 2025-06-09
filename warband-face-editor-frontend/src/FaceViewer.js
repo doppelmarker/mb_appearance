@@ -515,17 +515,24 @@ export class FaceViewer {
             female: {}
         };
         
-        // Define gender-specific texture paths
+        // Define gender-specific texture paths with more variety
         const genderTextures = {
             male: {
-                white: '/dds_textures/manface_young_2.dds',     // Light skin
-                tan: '/dds_textures/manface_midage.dds',        // Tan/medium skin
-                dark: '/dds_textures/manface_african.dds'       // Dark skin
+                young: '/dds_textures/manface_young.dds',
+                young2: '/dds_textures/manface_young_2.dds',
+                young3: '/dds_textures/manface_young_3.dds',
+                warrior: '/dds_textures/manface_7.dds',
+                midage: '/dds_textures/manface_midage.dds',
+                midage2: '/dds_textures/manface_midage_2.dds',
+                rugged: '/dds_textures/manface_rugged.dds',
+                african: '/dds_textures/manface_african.dds'
             },
             female: {
-                white: '/dds_textures/womanface_young.dds',     // Light skin
-                tan: '/dds_textures/womanface_brown.dds',       // Tan/medium skin
-                dark: '/dds_textures/womanface_african.dds'     // Dark skin
+                young: '/dds_textures/womanface_young.dds',
+                pretty: '/dds_textures/womanface_a.dds',
+                mature: '/dds_textures/womanface_b.dds',
+                brown: '/dds_textures/womanface_brown.dds',
+                african: '/dds_textures/womanface_african.dds'
             }
         };
         
@@ -598,15 +605,6 @@ export class FaceViewer {
         // Track current skin tone
         this.currentSkinTone = tone;
         
-        // Define skin tone colors for fallback
-        const skinColors = {
-            white: { color: 0xffdbac, specular: 0x222222 },
-            tan: { color: 0xd4a373, specular: 0x111111 },
-            dark: { color: 0x8b6239, specular: 0x050505 }
-        };
-        
-        const selectedSkin = skinColors[tone] || skinColors.white;
-        
         // Get gender-specific texture
         const genderTextures = this.textures[this.currentGender] || {};
         const texture = genderTextures[tone];
@@ -618,12 +616,12 @@ export class FaceViewer {
             this.headMesh.material.needsUpdate = true;
             console.log(`Applied ${this.currentGender} ${tone} skin texture`);
         } else {
-            // Fallback to color-based material
+            // Fallback to a neutral skin color
             this.headMesh.material.map = null;
-            this.headMesh.material.color.setHex(selectedSkin.color);
-            this.headMesh.material.specular.setHex(selectedSkin.specular);
+            this.headMesh.material.color.setHex(0xffdbac);
+            this.headMesh.material.specular.setHex(0x222222);
             this.headMesh.material.needsUpdate = true;
-            console.log(`Applied ${tone} skin color (no texture available for ${this.currentGender})`);
+            console.log(`Applied default skin color (no texture available for ${this.currentGender} ${tone})`);
         }
     }
 }

@@ -79,6 +79,10 @@ function setupGenderControls() {
             updateInfo('Loading male head...');
             faceViewer.switchGender('male').then(() => {
                 updateInfo('Male head loaded!');
+                // Update skin dropdown for male options
+                if (morphControls) {
+                    morphControls.updateSkinOptions('male');
+                }
             }).catch(() => {
                 updateInfo('Error loading male head');
             });
@@ -93,6 +97,10 @@ function setupGenderControls() {
             updateInfo('Loading female head...');
             faceViewer.switchGender('female').then(() => {
                 updateInfo('Female head loaded!');
+                // Update skin dropdown for female options
+                if (morphControls) {
+                    morphControls.updateSkinOptions('female');
+                }
             }).catch(() => {
                 updateInfo('Error loading female head');
             });
@@ -101,6 +109,8 @@ function setupGenderControls() {
 }
 
 // Initialize the app
+let morphControls = null; // Store reference to morph controls
+
 async function init() {
     updateInfo('Loading face model...');
     
@@ -116,14 +126,14 @@ async function init() {
         
         if (success) {
             updateInfo('Male head loaded successfully!');
-            // Apply default light skin tone
-            faceViewer.setSkinTone('white');
+            // Apply default young skin tone
+            faceViewer.setSkinTone('young');
         } else {
             updateInfo('Using fallback head model');
         }
         
         // Initialize morph controls after model is loaded
-        const morphControls = new MorphControls(faceViewer);
+        morphControls = new MorphControls(faceViewer);
         
     } catch (error) {
         console.error('Initialization error:', error);
