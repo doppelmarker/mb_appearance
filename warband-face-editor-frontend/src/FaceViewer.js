@@ -9,6 +9,7 @@ export class FaceViewer {
         this.loader = new OBJLoader();
         this.textures = {};
         this.currentGender = 'male'; // default to male
+        this.currentSkinTone = 'white'; // default skin tone
         this.maleHead = null;
         this.femaleHead = null;
     }
@@ -60,7 +61,8 @@ export class FaceViewer {
             // Ensure proper scale and position
             this.headMesh.scale.setScalar(1);
             this.headMesh.position.set(0, 0, 0);
-            this.headMesh.rotation.set(0, 0, 0);
+            // Rotate 90 degrees around X to face forward, then 180 around Y to flip upright
+            this.headMesh.rotation.set(Math.PI / 2, Math.PI, 0);
             
             // Make sure all children are visible
             this.headMesh.traverse((child) => {
@@ -443,7 +445,12 @@ export class FaceViewer {
 
     async switchGender(gender) {
         if (gender !== this.currentGender) {
-            return await this.loadHead(gender);
+            const success = await this.loadHead(gender);
+            if (success) {
+                // Reapply the current skin tone to use gender-specific texture
+                this.setSkinTone(this.currentSkinTone);
+            }
+            return success;
         }
         return true;
     }
@@ -502,64 +509,94 @@ export class FaceViewer {
     async loadTextures() {
         const ddsLoader = new DDSLoader();
         
-        // Define DDS texture paths based on skin tone
-        const texturePaths = {
-            white: '/dds_textures/manface_young_2.dds',     // Light skin
-            tan: '/dds_textures/manface_midage.dds',        // Tan/medium skin
-            dark: '/dds_textures/manface_african.dds'       // Dark skin
+        // Initialize texture storage for both genders
+        this.textures = {
+            male: {},
+            female: {}
         };
         
-        // Additional texture variations we can use
+        // Define gender-specific texture paths
+        const genderTextures = {
+            male: {
+                white: '/dds_textures/manface_young_2.dds',     // Light skin
+                tan: '/dds_textures/manface_midage.dds',        // Tan/medium skin
+                dark: '/dds_textures/manface_african.dds'       // Dark skin
+            },
+            female: {
+                white: '/dds_textures/womanface_young.dds',     // Light skin
+                tan: '/dds_textures/womanface_brown.dds',       // Tan/medium skin
+                dark: '/dds_textures/womanface_african.dds'     // Dark skin
+            }
+        };
+        
+        // Additional texture variations for future use
         this.textureVariations = {
-            young: [
-                '/dds_textures/manface_young.dds',
-                '/dds_textures/manface_young_2.dds',
-                '/dds_textures/manface_young_3.dds'
-            ],
-            aged: [
-                '/dds_textures/manface_1_aged.dds',
-                '/dds_textures/manface_2_aged.dds',
-                '/dds_textures/manface_african_old.dds'
-            ],
-            rugged: [
-                '/dds_textures/manface_rugged.dds',
-                '/dds_textures/manface_midage_2.dds'
-            ]
+            male: {
+                young: [
+                    '/dds_textures/manface_young.dds',
+                    '/dds_textures/manface_young_2.dds',
+                    '/dds_textures/manface_young_3.dds'
+                ],
+                aged: [
+                    '/dds_textures/manface_1_aged.dds',
+                    '/dds_textures/manface_2_aged.dds',
+                    '/dds_textures/manface_african_old.dds'
+                ]
+            },
+            female: {
+                young: [
+                    '/dds_textures/womanface_young.dds',
+                    '/dds_textures/womanface_a.dds',
+                    '/dds_textures/womanface_b.dds'
+                ],
+                aged: [
+                    '/dds_textures/womanface_1_aged.dds',
+                    '/dds_textures/womanface_2_aged.dds',
+                    '/dds_textures/womanface_african_aged.dds'
+                ]
+            }
         };
         
-        // Try to load each texture
-        for (const [tone, path] of Object.entries(texturePaths)) {
-            try {
-                const texture = await new Promise((resolve, reject) => {
-                    ddsLoader.load(
-                        path,
-                        (texture) => resolve(texture),
-                        undefined,
-                        (error) => reject(error)
-                    );
-                });
-                
-                texture.colorSpace = THREE.SRGBColorSpace;
-                texture.flipY = false; // Don't flip texture since we're flipping UVs
-                texture.wrapS = THREE.RepeatWrapping;
-                texture.wrapT = THREE.RepeatWrapping;
-                this.textures[tone] = texture;
-                console.log(`Loaded ${tone} skin DDS texture from ${path}`);
-            } catch (e) {
-                console.warn(`Could not load ${tone} skin texture from ${path}:`, e);
+        // Load textures for both genders
+        let totalLoaded = 0;
+        for (const [gender, textures] of Object.entries(genderTextures)) {
+            for (const [tone, path] of Object.entries(textures)) {
+                try {
+                    const texture = await new Promise((resolve, reject) => {
+                        ddsLoader.load(
+                            path,
+                            (texture) => resolve(texture),
+                            undefined,
+                            (error) => reject(error)
+                        );
+                    });
+                    
+                    texture.colorSpace = THREE.SRGBColorSpace;
+                    texture.flipY = false; // Don't flip texture since we're flipping UVs
+                    texture.wrapS = THREE.RepeatWrapping;
+                    texture.wrapT = THREE.RepeatWrapping;
+                    this.textures[gender][tone] = texture;
+                    console.log(`Loaded ${gender} ${tone} skin DDS texture from ${path}`);
+                    totalLoaded++;
+                } catch (e) {
+                    console.warn(`Could not load ${gender} ${tone} skin texture from ${path}:`, e);
+                }
             }
         }
         
-        // If no textures loaded, we'll use color fallbacks
-        if (Object.keys(this.textures).length === 0) {
+        // Report loading status
+        if (totalLoaded === 0) {
             console.log('No DDS textures found, using color-based materials');
         } else {
-            console.log(`Successfully loaded ${Object.keys(this.textures).length} DDS textures`);
+            console.log(`Successfully loaded ${totalLoaded} DDS textures`);
         }
     }
 
     setSkinTone(tone) {
         if (!this.headMesh || !this.headMesh.material) return;
+        
+        // Track current skin tone
+        this.currentSkinTone = tone;
         
         // Define skin tone colors for fallback
         const skinColors = {
@@ -570,19 +607,23 @@ export class FaceViewer {
         
         const selectedSkin = skinColors[tone] || skinColors.white;
         
-        if (this.textures[tone]) {
+        // Get gender-specific texture
+        const genderTextures = this.textures[this.currentGender] || {};
+        const texture = genderTextures[tone];
+        
+        if (texture) {
             // Apply texture if available
-            this.headMesh.material.map = this.textures[tone];
+            this.headMesh.material.map = texture;
             this.headMesh.material.color.setHex(0xffffff); // Reset color to white when using texture
             this.headMesh.material.needsUpdate = true;
-            console.log(`Applied ${tone} skin texture`);
+            console.log(`Applied ${this.currentGender} ${tone} skin texture`);
         } else {
             // Fallback to color-based material
             this.headMesh.material.map = null;
             this.headMesh.material.color.setHex(selectedSkin.color);
             this.headMesh.material.specular.setHex(selectedSkin.specular);
             this.headMesh.material.needsUpdate = true;
-            console.log(`Applied ${tone} skin color (no texture available)`);
+            console.log(`Applied ${tone} skin color (no texture available for ${this.currentGender})`);
         }
     }
 }

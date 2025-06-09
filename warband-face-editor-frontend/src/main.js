@@ -17,7 +17,7 @@ const camera = new THREE.PerspectiveCamera(
     0.1, 
     1000
 );
-camera.position.set(0, 0, 3);
+camera.position.set(0, 0, 1); // Position camera closer for better face view
 
 // Renderer setup
 const renderer = new THREE.WebGLRenderer({ 
@@ -29,22 +29,22 @@ renderer.setPixelRatio(window.devicePixelRatio);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 
 // Lighting setup
-const ambientLight = new THREE.AmbientLight(0x404040, 1.5);
+const ambientLight = new THREE.AmbientLight(0x404040, 2); // Increase ambient light
 scene.add(ambientLight);
 
 const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-directionalLight.position.set(5, 10, 5);
+directionalLight.position.set(0, 5, 10); // Move light to front
 scene.add(directionalLight);
 
-const fillLight = new THREE.DirectionalLight(0x8888ff, 0.3);
-fillLight.position.set(-5, 0, -5);
+const fillLight = new THREE.DirectionalLight(0x8888ff, 0.5); // Increase fill light
+fillLight.position.set(-5, 0, 5); // Move to illuminate face from side
 scene.add(fillLight);
 
 // Camera controls
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
-controls.target.set(0, 0, 0);
+controls.target.set(0, 0, 0); // Look at center
 
 // Handle window resize
 window.addEventListener('resize', () => {
@@ -116,6 +116,8 @@ async function init() {
         
         if (success) {
             updateInfo('Male head loaded successfully!');
+            // Apply default light skin tone
+            faceViewer.setSkinTone('white');
         } else {
             updateInfo('Using fallback head model');
         }
