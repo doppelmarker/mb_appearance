@@ -6,24 +6,39 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is `mb-app`, a Python CLI utility for manipulating Mount & Blade character appearance files. The tool can backup, restore, and generate random characters by directly manipulating the game's binary `profiles.dat` file.
 
+**NEW: FastAPI Web Service** - The project now includes a REST API wrapper for web-based character editing, supporting the warband-face-editor project.
+
 ## Development Commands
 
 **IMPORTANT: Always activate the virtual environment before running commands**
 - **Activate venv**: `source venv/bin/activate` (Linux/macOS) or `venv\Scripts\activate` (Windows)
 - **Install for development**: `pip install -e .`
+- **Install web API dependencies**: `pip install fastapi uvicorn python-multipart`
 - **Run tests**: `python -m pytest tests/ -v`
+- **Test API**: `python test_api.py`
 - **Run the CLI**: `python -m appearance` or `mb-app` (after install)
+- **Run the Web API**: `python -m appearance.web_api` (starts server on http://localhost:8000)
 - **Package for PyPI**: `python setup.py sdist bdist_wheel`
 
 ## Architecture
 
 The application follows a clear separation of concerns:
 
+**CLI Application:**
 - **Entry point**: `appearance/__main__.py` and `appearance/app.py:main()`
 - **CLI parsing**: `argparser.py` handles all command-line arguments
 - **Core logic**: `service.py` contains backup/restore/generation functions
 - **Binary manipulation**: `helpers.py` handles low-level file I/O and byte operations
 - **File paths**: `consts.py` manages cross-platform game directory detection and binary offsets
+
+**Web API (NEW):**
+- **Entry point**: `appearance/web_api.py` and `appearance/api/app.py`
+- **API models**: `appearance/api/models.py` contains Pydantic request/response models
+- **Session management**: `appearance/api/session.py` handles temporary file storage
+- **Character endpoints**: `appearance/api/characters.py` provides character CRUD operations
+- **Face code endpoints**: `appearance/api/face_codes.py` handles face code encode/decode
+- **File endpoints**: `appearance/api/files.py` manages upload/download/backup operations
+- **Middleware**: `appearance/api/middleware.py` provides error handling and logging
 
 ## Key Technical Details
 
@@ -35,8 +50,53 @@ The application follows a clear separation of concerns:
 ## File Structure
 
 - Core application logic in `appearance/` package
+- **Web API in `appearance/api/` package (NEW)**
 - Binary templates and backups in `resources/`
 - Console entry point configured in `setup.py` as `mb-app`
+
+## Web API Usage (NEW)
+
+**Starting the API Server:**
+```bash
+# Development mode (auto-reload)
+python -m appearance.web_api
+
+# Production mode
+uvicorn appearance.web_api:app --host 0.0.0.0 --port 8000
+```
+
+**API Documentation:**
+- Swagger UI: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
+- Health check: http://localhost:8000/health
+
+**Key Endpoints:**
+- `POST /api/sessions` - Create session for file operations
+- `POST /api/sessions/{id}/upload` - Upload profiles.dat file
+- `GET /api/sessions/{id}/characters` - List characters
+- `GET /api/face-codes/{code}/decode` - Decode face code for 3D editing
+- `POST /api/face-codes/encode` - Encode morph components to face code
+- `GET /api/sessions/{id}/download` - Download modified profiles.dat
+
+**Example Usage:**
+```python
+import requests
+
+# Create session
+session = requests.post("http://localhost:8000/api/sessions").json()
+session_id = session["session_id"]
+
+# Upload file
+with open("profiles.dat", "rb") as f:
+    requests.post(f"http://localhost:8000/api/sessions/{session_id}/upload", 
+                  files={"file": f})
+
+# List characters
+characters = requests.get(f"http://localhost:8000/api/sessions/{session_id}/characters").json()
+
+# Decode face code
+face_data = requests.get(f"http://localhost:8000/api/face-codes/{characters[0]['face_code']}/decode").json()
+```
 
 ## Testing Guidelines
 

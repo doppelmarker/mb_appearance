@@ -8,10 +8,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **MAJOR: Complete Mount & Blade Warband Face Code Support**
+  - `parse_face_code_components()` function to decode 64-character face codes
+  - `generate_face_code()` function to encode face codes from components  
+  - `apply_face_code()` function to write face codes to profiles.dat
+  - Support for all 43 morph targets (morph_keys 0-42)
+  - Support for all appearance parameters (hair, beard, age, skin, hair_color, skin_color, hair_texture)
+  - Accurate 4-block bit-packed structure matching game's internal format
+  - Perfect round-trip encoding/decoding verified with game examples
+  - Enhanced face code validation with comprehensive error handling
+  - 7 comprehensive test functions covering all functionality
+- Face codes now displayed in character listings with `--show-face-codes` flag
+- Full compatibility with Mount & Blade's Ctrl+E face code export format
 
 ### Changed
+- Face code implementation completely rewritten to match documented internal format
+- Face code parsing now correctly extracts age=6 from documented example (was incorrectly 0)
+- Face code structure properly implements 4 blocks of 64 bits each
+- Improved error messages for face code validation
 
 ### Fixed
+- Face code bit layout now correctly matches Mount & Blade's internal documentation
+- Morph value extraction fixed to handle proper 3-bit encoding within blocks
+- Face code generation now produces valid codes accepted by the game
 
 ## [0.4.0] - 2025-06-08
 

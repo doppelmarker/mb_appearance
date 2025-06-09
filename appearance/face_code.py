@@ -68,9 +68,7 @@ def extract_face_code(character_bytes: bytes, char_offset: int = 0) -> str:
 
 def apply_face_code(character_bytes: bytes, face_code: str, char_offset: int = 0) -> bytes:
     """
-    Apply a face code to character bytes.
-    
-    This reverses the extraction process to write face code data back to the file.
+    Apply a face code to character bytes by properly decoding components and writing to correct offsets.
     
     Args:
         character_bytes: Original character data
@@ -78,67 +76,58 @@ def apply_face_code(character_bytes: bytes, face_code: str, char_offset: int = 0
         char_offset: Starting offset of character in the bytes
         
     Returns:
-        Updated character bytes with new face code
+        Updated character bytes with new face code applied
     """
-    # Remove 0x prefix if present
-    if face_code.startswith('0x'):
-        face_code = face_code[2:]
+    from .consts import CHAR_OFFSETS
     
-    # Validate face code length
-    if len(face_code) != 64:
-        raise ValueError(f"Face code must be 64 characters, got {len(face_code)}")
+    # Parse face code into components
+    components = parse_face_code_components(face_code)
     
-    # Validate hex characters
-    try:
-        int(face_code, 16)
-    except ValueError:
-        raise ValueError("Face code must contain only hexadecimal characters")
+    # Create mutable copy of character bytes
+    char_data = bytearray(character_bytes)
     
-    # Parse face code chunks
-    chunks = [face_code[i:i+8] for i in range(0, 64, 8)]
+    # Apply appearance values to correct byte offsets
     
-    # Prepare the 32-byte face data by reversing the extraction process
-    face_bytes = bytearray(32)
+    # 1. Hair style (HAIRSTYLE offset = 13)
+    char_data[char_offset + CHAR_OFFSETS["HAIRSTYLE"]] = components['hair'] & 0xFF
     
-    # Chunk 0 (0000000f) -> extract last char as byte 3
-    face_bytes[3] = int(chunks[0][-1], 16)
+    # 2. Skin tone (SKIN offset = 14)
+    char_data[char_offset + CHAR_OFFSETS["SKIN"]] = components['skin'] & 0xFF
     
-    # Chunk 1 (ee003000) -> bytes 0 and 2
-    face_bytes[2] = int(chunks[1][0:2], 16)  # ee
-    face_bytes[0] = int(chunks[1][4:6], 16)  # 30
+    # 3. Age and Hair Color (bit-packed in bytes 16-17)
+    # Based on CLAUDE.md: Age and Hair Color share bytes 16-17 using bit-packing
+    age_hair_offset = char_offset + CHAR_OFFSETS["AGE_HAIR_COLOR"]
     
-    # For the middle section, we need to reverse the rearrangement
-    # Chunks 2-3 need careful handling
-    # This is complex - for now, preserve existing data
-    # TODO: Implement full reverse mapping
+    # Byte 16: Hair Color (bits 0-5) + Age low 2 bits (bits 6-7)
+    hair_color = components['hair_color'] & 0x3F  # 6 bits
+    age_low = components['age'] & 0x03  # 2 bits
+    char_data[age_hair_offset] = hair_color | (age_low << 6)
     
-    # Copy existing middle bytes for now
-    start = char_offset + 14
-    existing_middle = character_bytes[start + 4:start + 16]
-    face_bytes[4:16] = existing_middle
+    # Byte 17: Age high 4 bits (bits 0-3)
+    age_high = (components['age'] >> 2) & 0x0F  # 4 bits
+    char_data[age_hair_offset + 1] = age_high
     
-    # Chunk 5 (001fe8ba) -> bytes 15-17
-    if chunks[5] != "00000000":
-        face_bytes[17] = int(chunks[5][2:4], 16)  # 1f
-        face_bytes[16] = int(chunks[5][4:6], 16)  # e8
-        face_bytes[15] = int(chunks[5][6:8], 16)  # ba
+    # 4. Appearance bytes (APPEARANCE offset = 21)
+    # The morphs need to be encoded into the 11-byte appearance section
+    # This is complex as morphs from the face code need to be packed into these bytes
+    # For now, we'll preserve the existing appearance bytes and focus on the main components
     
-    # Replace bytes 14-45 in character data
-    end = start + 32
+    # Note: The full morph encoding into appearance bytes would require reverse-engineering
+    # the exact bit packing used in the game's appearance bytes. The face code extraction
+    # currently works by reading from these bytes in a specific pattern.
     
-    return character_bytes[:start] + bytes(face_bytes) + character_bytes[end:]
+    return bytes(char_data)
 
 
 def parse_face_code_components(face_code: str) -> Dict[str, Any]:
     """
     Parse face code into individual components.
     
-    Based on Mount & Blade Warband's face code structure:
-    - 8 morph targets (3 bits each)
-    - Hair index (6 bits)
-    - Beard index (6 bits)
-    - Age (6 bits)
-    - Skin tone (6 bits)
+    Based on Mount & Blade Warband's internal face code structure from documentation:
+    - Block 0: hair, beard, skin, hair_texture, hair_color, age, skin_color (6 bits each)
+    - Block 1: morph_keys 0-20 (3 bits each, 21 morphs)
+    - Block 2: morph_keys 21-42 (3 bits each, 22 morphs, last one only 1 bit)
+    - Block 3: unused
     
     Args:
         face_code: 64-character hex string
@@ -150,23 +139,147 @@ def parse_face_code_components(face_code: str) -> Dict[str, Any]:
     if face_code.startswith('0x'):
         face_code = face_code[2:]
     
-    # Convert to binary representation
-    binary = bin(int(face_code, 16))[2:].zfill(256)
+    # Validate face code length
+    if len(face_code) != 64:
+        raise ValueError(f"Face code must be 64 characters, got {len(face_code)}")
     
-    # Extract components (this is a simplified version - actual bit layout may differ)
-    # The exact bit positions would need to be determined through more testing
+    # Convert to integer and split into 4 blocks of 64 bits each
+    try:
+        full_value = int(face_code, 16)
+    except ValueError:
+        raise ValueError("Face code must contain only hexadecimal characters")
+    
+    # Split the 64-character hex string into 4 chunks of 16 characters each
+    # Each chunk represents 64 bits
+    # Layout: 0x[chunk0][chunk1][chunk2][chunk3]
+    chunk0 = face_code[0:16]   # Leftmost 16 hex chars  
+    chunk1 = face_code[16:32]  # Next 16 hex chars
+    chunk2 = face_code[32:48]  # Next 16 hex chars
+    chunk3 = face_code[48:64]  # Rightmost 16 hex chars
+    
+    # Convert chunks to integers
+    # From the documentation example:
+    # chunk0 = "0000000180000041" = face_key_1 (block 0)
+    # chunk1 = "36db79b6db6db6fb" = face_key_2 (block 1)
+    # chunk2 = "7fffff6d77bf36db" = block 2
+    # chunk3 = "0000000000000000" = block 3 (unused)
+    
+    block_0 = int(chunk0, 16)  # face_key_1
+    block_1 = int(chunk1, 16)  # face_key_2  
+    block_2 = int(chunk2, 16)  # block 2
+    block_3 = int(chunk3, 16)  # block 3 (unused)
+    
+    # Extract Block 0 components (within the 64-bit block)
+    hair = block_0 & 0x3F  # bits 0-5
+    beard = (block_0 >> 6) & 0x3F  # bits 6-11
+    skin = (block_0 >> 12) & 0x3F  # bits 12-17
+    hair_texture = (block_0 >> 18) & 0x3F  # bits 18-23
+    hair_color = (block_0 >> 24) & 0x3F  # bits 24-29
+    age = (block_0 >> 30) & 0x3F  # bits 30-35
+    skin_color = (block_0 >> 36) & 0x3F  # bits 36-41
+    
+    # Extract morphs from blocks 1 and 2
+    morphs = []
+    
+    # Block 1: morph_keys 0-20 (3 bits each within this 64-bit block)
+    for i in range(21):
+        bit_position = i * 3  # Within block 1
+        morph_value = (block_1 >> bit_position) & 0x7  # Extract 3 bits (0-7)
+        morphs.append(morph_value)
+    
+    # Block 2: morph_keys 21-41 (3 bits each within this 64-bit block)
+    for i in range(21):
+        bit_position = i * 3  # Within block 2
+        morph_value = (block_2 >> bit_position) & 0x7  # Extract 3 bits (0-7)
+        morphs.append(morph_value)
+    
+    # morph_key_42 (bit 63 in block 2, only 1 bit used)
+    morph_42 = (block_2 >> 63) & 0x1
+    morphs.append(morph_42)
+    
     components = {
         'raw_hex': face_code,
-        'binary': binary,
-        # These mappings are placeholders - need to determine exact positions
-        'morphs': [],  # Will need to extract 8 morph values
-        'hair_index': None,
-        'beard_index': None,
-        'age': None,
-        'skin_tone': None,
+        'hair': hair,
+        'beard': beard,
+        'skin': skin,
+        'hair_texture': hair_texture,
+        'hair_color': hair_color,
+        'age': age,
+        'skin_color': skin_color,
+        'morphs': morphs,  # 43 morph values total (0-42)
+        # Legacy aliases for backward compatibility
+        'hair_index': hair,
+        'beard_index': beard,
+        'skin_tone': skin,
     }
     
     return components
+
+
+def generate_face_code(components: Dict[str, Any]) -> str:
+    """
+    Generate a face code from individual components.
+    
+    This is the reverse of parse_face_code_components().
+    
+    Args:
+        components: Dictionary with face components
+        
+    Returns:
+        64-character hex face code string with 0x prefix
+    """
+    # Build each block separately
+    
+    # Block 0: appearance components (6 bits each)
+    block_0 = 0
+    block_0 |= (components.get('hair', 0) & 0x3F)  # bits 0-5
+    block_0 |= (components.get('beard', 0) & 0x3F) << 6  # bits 6-11
+    block_0 |= (components.get('skin', 0) & 0x3F) << 12  # bits 12-17
+    block_0 |= (components.get('hair_texture', 0) & 0x3F) << 18  # bits 18-23
+    block_0 |= (components.get('hair_color', 0) & 0x3F) << 24  # bits 24-29
+    block_0 |= (components.get('age', 0) & 0x3F) << 30  # bits 30-35
+    block_0 |= (components.get('skin_color', 0) & 0x3F) << 36  # bits 36-41
+    
+    # Get morphs and pad if needed
+    morphs = components.get('morphs', [])
+    while len(morphs) < 43:
+        morphs.append(0)
+    
+    # Block 1: morph_keys 0-20 (3 bits each within this 64-bit block)
+    block_1 = 0
+    for i in range(21):
+        bit_position = i * 3  # Within block 1
+        morph_value = morphs[i] & 0x7  # Ensure 3 bits max
+        block_1 |= morph_value << bit_position
+    
+    # Block 2: morph_keys 21-42 (3 bits each within this 64-bit block)
+    block_2 = 0
+    for i in range(21):
+        bit_position = i * 3  # Within block 2
+        morph_value = morphs[21 + i] & 0x7  # Ensure 3 bits max
+        block_2 |= morph_value << bit_position
+    
+    # morph_key_42 (bit 63 in block 2, only 1 bit)
+    if len(morphs) > 42:
+        morph_42 = morphs[42] & 0x1  # Ensure 1 bit max
+        block_2 |= morph_42 << 63
+    
+    # Block 3: unused
+    block_3 = 0
+    
+    # Combine blocks into final hex string
+    # Layout: chunk0 (block_0) + chunk1 (block_1) + chunk2 (block_2) + chunk3 (block_3)
+    # Each block is 64 bits = 16 hex characters
+    
+    chunk0 = f"{block_0:016x}"  # block_0 as 16 hex chars
+    chunk1 = f"{block_1:016x}"  # block_1 as 16 hex chars  
+    chunk2 = f"{block_2:016x}"  # block_2 as 16 hex chars
+    chunk3 = f"{block_3:016x}"  # block_3 as 16 hex chars
+    
+    # Concatenate chunks
+    face_code_hex = chunk0 + chunk1 + chunk2 + chunk3
+    
+    return f"0x{face_code_hex}"
 
 
 def validate_face_code(face_code: str) -> bool:

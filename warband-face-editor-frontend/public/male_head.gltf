@@ -1,0 +1,180 @@
+{
+    "asset": {
+        "version": "2.0",
+        "generator": "Open Asset Import Library (assimp v5.2.cf7d3637)"
+    },
+    "extensionsUsed": [
+        "KHR_materials_volume",
+        "KHR_materials_ior",
+        "FB_ngon_encoding"
+    ],
+    "accessors": [
+        {
+            "bufferView": 0,
+            "byteOffset": 0,
+            "componentType": 5126,
+            "count": 1347,
+            "type": "VEC3",
+            "max": [
+                9.999999974752428e-7,
+                0.1334639936685562,
+                0.24752700328826905
+            ],
+            "min": [
+                -0.09255599975585938,
+                -0.10919400304555893,
+                -0.07942800223827362
+            ]
+        },
+        {
+            "bufferView": 1,
+            "byteOffset": 0,
+            "componentType": 5126,
+            "count": 1347,
+            "type": "VEC3",
+            "max": [
+                0.5281179547309876,
+                0.9959191083908081,
+                0.9969702363014221
+            ],
+            "min": [
+                -0.9968695044517517,
+                -0.9517093300819397,
+                -0.970116138458252
+            ]
+        },
+        {
+            "bufferView": 2,
+            "byteOffset": 0,
+            "componentType": 5126,
+            "count": 1347,
+            "type": "VEC2",
+            "max": [
+                0.9937989711761475,
+                0.9978160262107849
+            ],
+            "min": [
+                0.5,
+                0.0006819963455200195
+            ]
+        },
+        {
+            "bufferView": 3,
+            "byteOffset": 0,
+            "componentType": 5125,
+            "count": 1347,
+            "type": "SCALAR",
+            "max": [
+                1346
+            ],
+            "min": [
+                0
+            ]
+        }
+    ],
+    "buffers": [
+        {
+            "byteLength": 48492,
+            "uri": "result.bin"
+        }
+    ],
+    "bufferViews": [
+        {
+            "buffer": 0,
+            "byteOffset": 0,
+            "byteLength": 16164,
+            "target": 34962
+        },
+        {
+            "buffer": 0,
+            "byteOffset": 16164,
+            "byteLength": 16164,
+            "target": 34962
+        },
+        {
+            "buffer": 0,
+            "byteOffset": 32328,
+            "byteLength": 10776,
+            "target": 34962
+        },
+        {
+            "buffer": 0,
+            "byteOffset": 43104,
+            "byteLength": 5388,
+            "target": 34963
+        }
+    ],
+    "materials": [
+        {
+            "name": "DefaultMaterial",
+            "pbrMetallicRoughness": {
+                "baseColorFactor": [
+                    0.6000000238418579,
+                    0.6000000238418579,
+                    0.6000000238418579,
+                    1.0
+                ],
+                "metallicFactor": 0.0
+            },
+            "extensions": {
+                "KHR_materials_ior": {
+                    "ior": 1.0
+                }
+            }
+        },
+        {
+            "name": "default",
+            "pbrMetallicRoughness": {
+                "baseColorFactor": [
+                    0.6000000238418579,
+                    0.6000000238418579,
+                    0.6000000238418579,
+                    1.0
+                ],
+                "metallicFactor": 0.0
+            },
+            "extensions": {
+                "KHR_materials_ior": {
+                    "ior": 1.0
+                }
+            }
+        }
+    ],
+    "meshes": [
+        {
+            "name": "defaultobject",
+            "primitives": [
+                {
+                    "mode": 4,
+                    "material": 1,
+                    "indices": 3,
+                    "attributes": {
+                        "POSITION": 0,
+                        "NORMAL": 1,
+                        "TEXCOORD_0": 2
+                    }
+                }
+            ]
+        }
+    ],
+    "nodes": [
+        {
+            "name": "male_head.obj",
+            "children": [
+                1
+            ]
+        },
+        {
+            "name": "defaultobject",
+            "mesh": 0
+        }
+    ],
+    "scenes": [
+        {
+            "nodes": [
+                0
+            ]
+        }
+    ],
+    "scene": 0
+}

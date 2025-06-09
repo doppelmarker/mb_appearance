@@ -1,0 +1,149 @@
+Working with 64-bit numbers in JavaScript is terrible, but it works. I'll polish it a bit, maybe adding support for dropping custom skins.txt files and get the right tags/morph keys back for your race. 🐧
+
+Another thing I have found out is that there's seemingly support for 43-ish face keys, each of them is a 3-bit number that goes from 0 to 7, but only 42 of them do something usable. The 43nd only has one bit and doesn't seem to do anything when you move the slider. You can still add more to the list, but the game won't use them.
+
+
+It's interesting that, like for combobox overlays, the list elements appear reversed, so the first one (generally Chin Size) appears right at the bottom.
+
+All in all, very cool to have the format documented now.
+
+
+The funny thing is that I made this because I wanted to take advantage of the new face code operations in the module system to convert stringified numbers from a string register back into an actual number. Now that we know the bit layout; with the bit width and shift of each field, it can be done by exploiting the face code properties to retrieve the individual components, do some magic stuff to take into account the hexadecimal vs. decimal and bit position to reconstruct the number back.
+
+
+Right now we can turn numbers into strings, but not the other way around. As far as I know.
+
+Another interesting tidbit is that when you export/import a character the game only saves/loads face_key_1 and face_key_2, which is only the first half of the code you see when pressing Ctrl + E in the face editor. Ideally there should also be a face_key_3 and face_key_4, the former stores the face morphs 21 to 42, so that information gets lost. If you wonder about face_key_4, it is always wastefully empty. face_key_2 stores face morphs 0 to 20 (there's a wasted bit).
+
+If they had spent their bit budget well there would be enough space for 64 morph keys in those last three blocks. ¯\_(ツ)_/¯
+
+
+
+
+Face code internal format​
+A face code is actually made out of four 64-bit (or 8 byte) numbers (or blocks) written in hexadecimal and concatenated together.
+
+Here named from left to right (0), (1), (2) and (3).
+
+When you export a character from the Character > Statistics page it will only save the left half of it, storing the (0) as face_key_1 and (1) as face_key_2. Meaning that anything after morph_key_20 (i.e. from morph_key_21 to morph_key_42) will be lost. This may or may not matter, depending on the mod.
+
+Keep in mind that the game is very inconsistent in how it calls these codes; sometimes it refers to the whole face code as a «face key», sometimes a «face key» means each of the small face shape tweaks, or «morph keys», that you can control via in-game sliders, like in module_skins.py, here we use the second meaning. Take a look at the diagram below:
+
+Code:
+ face_key_1 = 180000041
+ face_key_2 = 36db79b6db6db6fb
+
+                                  <------- start-|
+                  <------- start-|               |
+  <------- start-|               |               |
+0x000000018000004136db79b6db6db6fb7fffff6d77bf36db0000000000000000
+  _______180000041
+       (0)        36db79b6db6db6fb
+                        (1)       7fffff6d77bf36db
+                                        (2)       ----------------
+                                                         (3)
+                                                       (unused)
+
+  Here is block (0) from the example above, we will use the bit shift and number of bits columns
+  from the table below to build bitmasks and retrieve each field, using the Python 3 prompt:
+
+  For example, age is in block (0), has 6 bits and a shift of 30 bits,
+  using hex((pow(2, num_bits) - 1) << bit_shift) we get:
+
+    >>> hex((pow(2,6)-1) << 30)
+    '0xfc0000000'
+    >>> hex((pow(2,6)-1))
+    '0x3f'
+
+    >>> bin((pow(2,6)-1) << 30) # swy: same thing, but in binary
+    '0b111111000000000000000000000000000000'
+    >>> bin((pow(2,6)-1)) # swy: what this does is just to generate six ones, six bits
+    '0b111111'
+
+  Now that we have the right bitmask we can use the logical AND operation to isolate only the bits
+  we are interested in and shift them back to the right (we can also see it as removing the padding)
+  to get the actual number with just a simple ((block & bitmask) >> bit_shift):
+
+    >>> hex(0x180000041 & 0xfc0000000) # swy: only leave our six potential bits toggled
+    '0x180000000'
+    >>> bin(0x180000041 & 0xfc0000000) # swy: same thing, but in binary
+    '0b110000000000000000000000000000000'
+    >>> bin(0x180000041)               # swy: here's the original, compare against the one above
+    '0b110000000000000000000000001000001'
+
+    >>> hex((0x180000041 & 0xfc0000000) >> 30) # swy: we are interested in the left-most «110» bit part you see above
+    '0x6'
+    >>> bin((0x180000041 & 0xfc0000000) >> 30) # swy: so move the bits 30 positions to the right, same but shown in binary
+    '0b110'
+
+    >>> ((0x180000041 & 0xfc0000000) >> 30)
+    6
+
+||    Do:  0000000000000000000000000000000110000000000000000000000001000001
+ |  Mask:  ----------------------------XXXXXX
+ | Final:                              000110
+
+  In our case the age field contains the number six. See more examples below.
+
+  _______180000041
+                3f # hair: to get the field ((0x180000041 & 0x3f) >> 0), which results in 1
+               fc0 # beard
+             3f000 # skin
+          3f000000 # hair_color: to get the field ((0x180000041 & 0x3f000000) >> 24), which results in 0
+         fc0000000 # age: python code to generate a bitmask: hex((pow(2,6)-1) << 30)
+
+value	block no.	bit shift in key	num bits	comments
+hair	0	0	6	Range is 0-63. Max bits known, adjacent to next left field (beard).
+Hair mesh index for the current race; the first mesh has index 1, index 0 means none.
+beard	0	6	6	Range is 0-63. Max bits known, adjacent to next left field (skin).
+Beard mesh index for the current race; the first mesh has index 1, index 0 means none.
+skin/face_texture	0	12	6	Range is 0-63. Index for the active face material, first one is index 0. Internally it seems to be called face_texture, and the operations are labeled as that, but it's labeled as Skin in the face editor. Also controls the hair texture and skin color now, as they are paired. Are the hair_texture and skin_color fields obsolete, a leftover from earlier versions?
+hair_texture	0	18	6	Range is 0-63. Doesn't seem to be exposed in the editor. What for? Usually zero.
+hair_color	0	24	6	Range is 0-63. Interpolates/mixes/blends between the two colors.
+Max bits known, adjacent to next left field (age).
+age	0	30	6	Range is 0-63. Interpolates/mixes/blends between two face textures. Like in most of these, negative numbers in the (face_keys_set_age) operation get sign-extended, messing with/overwriting other fields.
+skin_color	0	36	6	Used/changed by the (face_keys_[set/get]_skin_color) operations. What for? Usually zero.
+morph_key_00	1	3 * 0 (0)	3	
+morph_key_01	1	3 * 1 (3)	3	
+morph_key_02	1	3 * 2 (6)	3	
+morph_key_03	1	3 * 3 (9)	3	
+morph_key_04	1	3 * 4 (12)	3	
+morph_key_05	1	3 * 5 (15)	3	
+morph_key_06	1	3 * 6 (18)	3	
+morph_key_07	1	3 * 7 (21)	3	
+morph_key_08	1	3 * 8 (24)	3	
+morph_key_09	1	3 * 9 (27)	3	
+morph_key_10	1	3 * 10 (30)	3	
+morph_key_11	1	3 * 11 (33)	3	
+morph_key_12	1	3 * 12 (36)	3	
+morph_key_13	1	3 * 13 (39)	3	
+morph_key_14	1	3 * 14 (42)	3	
+morph_key_15	1	3 * 15 (45)	3	
+morph_key_16	1	3 * 16 (48)	3	
+morph_key_17	1	3 * 17 (51)	3	
+morph_key_18	1	3 * 18 (54)	3	
+morph_key_19	1	3 * 19 (57)	3	
+morph_key_20	1	3 * 20 (60)	3	
+morph_key_21	2	3 * 0 (0)	3	
+morph_key_22	2	3 * 1 (3)	3	
+morph_key_23	2	3 * 2 (6)	3	
+morph_key_24	2	3 * 3 (9)	3	
+morph_key_25	2	3 * 4 (12)	3	
+morph_key_26	2	3 * 5 (15)	3	
+morph_key_27	2	3 * 6 (18)	3	
+morph_key_28	2	3 * 7 (21)	3	
+morph_key_29	2	3 * 8 (24)	3	
+morph_key_30	2	3 * 9 (27)	3	
+morph_key_31	2	3 * 10 (30)	3	
+morph_key_32	2	3 * 11 (33)	3	
+morph_key_33	2	3 * 12 (36)	3	
+morph_key_34	2	3 * 13 (39)	3	
+morph_key_35	2	3 * 14 (42)	3	
+morph_key_36	2	3 * 15 (45)	3	
+morph_key_37	2	3 * 16 (48)	3	
+morph_key_38	2	3 * 17 (51)	3	
+morph_key_39	2	3 * 18 (54)	3	
+morph_key_40	2	3 * 19 (57)	3	
+morph_key_41	2	3 * 20 (60)	3	
+morph_key_42	2	3 * 21 (63)	1	Only one bit left, wonky slider in-game and face does not seem to change;
+why not exploit the remaining bit range better? Don't ask me.
