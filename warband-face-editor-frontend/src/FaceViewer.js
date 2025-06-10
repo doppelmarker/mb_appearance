@@ -96,15 +96,7 @@ export class FaceViewer {
                 // Store morph mapping for reference
                 this.realMorphMapping = this.createRealMorphMapping();
                 
-                // TEST: Try setting first morph target to see if morphing works at all
-                if (this.headMesh.morphTargetInfluences.length > 0) {
-                    console.log('TESTING: Setting first morph target influence to 1.0 for 3 seconds...');
-                    this.headMesh.morphTargetInfluences[0] = 1.0;
-                    setTimeout(() => {
-                        console.log('TESTING: Resetting first morph target influence to 0');
-                        this.headMesh.morphTargetInfluences[0] = 0.0;
-                    }, 3000);
-                }
+                // Morph targets are ready for use
                 
             } else {
                 // Fallback to OBJ loading
