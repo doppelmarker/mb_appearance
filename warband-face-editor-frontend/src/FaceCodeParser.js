@@ -46,10 +46,10 @@ export class FaceCodeParser {
         18: 5,    // 'Nose Height' -> morph_key_05
         17: 6,    // 'Nose Width' -> morph_key_06
         16: 7,    // 'Nose Size' -> morph_key_07
-        14: 8,    // 'Nose Bridge' -> morph_key_08
-        13: 9,    // 'Cheek Bones' -> morph_key_09
-        11: 10,   // 'Eye to Eye Dist' -> morph_key_10
-        10: 11,   // 'Eye Shape' -> morph_key_11
+        14: 26,   // 'Nose Bridge' -> morph_key_26 (SWAPPED: was 8, now gets 7)
+        13: 25,   // 'Cheek Bones' -> morph_key_25 (SWAPPED: was 9, now gets 7)
+        11: 24,   // 'Eye to Eye Dist' -> morph_key_24 (SWAPPED: was 10, now gets 7)
+        10: 23,   // 'Eye Shape' -> morph_key_23 (SWAPPED: was 11, now gets 7)
         9: 12,    // 'Eye Depth' -> morph_key_12
         8: 13,    // 'Eyelids' -> morph_key_13
         12: 14,   // 'Eye Width' -> morph_key_14
@@ -63,10 +63,10 @@ export class FaceCodeParser {
         4: 20,    // 'Eyebrow Shape' -> morph_key_20
         5: 21,    // 'Eyebrow Depth' -> morph_key_21
         6: 22,    // 'Eyebrow Height' -> morph_key_22
-        15: 23,   // 'Nose Shape' -> morph_key_23
-        23: 24,   // 'Jaw Width' -> morph_key_24
-        24: 25,   // 'Chin Forward' -> morph_key_25
-        25: 26    // 'Chin Shape' -> morph_key_26
+        15: 11,   // 'Nose Shape' -> morph_key_11 (SWAPPED: was 23, now gets 0)
+        23: 10,   // 'Jaw Width' -> morph_key_10 (SWAPPED: was 24, now gets 0)
+        24: 9,    // 'Chin Forward' -> morph_key_09 (SWAPPED: was 25, now gets 0)
+        25: 8     // 'Chin Shape' -> morph_key_08 (SWAPPED: was 26, now gets 0)
     };
 
     // Reverse mapping from morph key to slider index
