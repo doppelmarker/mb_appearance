@@ -1,17 +1,20 @@
 import * as THREE from 'three';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 import { DDSLoader } from 'three/addons/loaders/DDSLoader.js';
+import { MD3Loader } from './MD3Loader.js';
 
 export class FaceViewer {
     constructor(scene) {
         this.scene = scene;
         this.headMesh = null;
-        this.loader = new OBJLoader();
+        this.objLoader = new OBJLoader();
+        this.md3Loader = new MD3Loader();
         this.textures = {};
         this.currentGender = 'male'; // default to male
         this.currentSkinTone = 'white'; // default skin tone
         this.maleHead = null;
         this.femaleHead = null;
+        this.useMD3 = true; // Flag to use MD3 with real morphs
     }
 
     async loadHead(gender = 'male') {
@@ -24,65 +27,104 @@ export class FaceViewer {
                 this.headMesh = null;
             }
             
-            // Load the appropriate OBJ model  
-            const modelPath = gender === 'female' 
-                ? '/obj_files/female_head.obj'
-                : '/obj_files/male_head.obj';
+            if (this.useMD3) {
+                // Load MD3 model with vertex animation
+                const modelPath = gender === 'female' 
+                    ? '/female_head.MD3'
+                    : '/male_head.MD3';
+                    
+                console.log(`Loading ${gender} MD3 model with real morphs:`, modelPath);
                 
-            console.log(`Loading ${gender} head model:`, modelPath);
-            const object = await this.loader.loadAsync(modelPath);
-            
-            // Get the head mesh from the OBJ
-            this.headMesh = object;
-            console.log('Loaded OBJ object:', this.headMesh);
-            console.log('OBJ children:', this.headMesh.children);
-            console.log('OBJ structure:', JSON.stringify(this.headMesh, null, 2));
-            
-            // Mirror the half-head to create full head
-            this.mirrorHeadGeometry();
-            
-            // Check if the scene has any visible meshes
-            let meshCount = 0;
-            this.headMesh.traverse((child) => {
-                if (child.isMesh) {
-                    meshCount++;
-                    console.log('Found mesh:', child.name, 'geometry:', child.geometry, 'material:', child.material);
-                    console.log('Mesh visible:', child.visible, 'scale:', child.scale);
+                const md3Data = await new Promise((resolve, reject) => {
+                    this.md3Loader.load(
+                        modelPath,
+                        resolve,
+                        (progress) => console.log('Loading progress:', progress),
+                        reject
+                    );
+                });
+                
+                console.log('MD3 data loaded:', md3Data);
+                console.log(`Number of frames: ${md3Data.header.numFrames}`);
+                console.log(`Number of surfaces: ${md3Data.header.numSurfaces}`);
+                
+                // Debug frame names if available
+                if (md3Data.frames) {
+                    console.log('Frame list:');
+                    md3Data.frames.forEach((frame, idx) => {
+                        console.log(`  Frame ${idx}: ${frame.name}`);
+                    });
                 }
-            });
-            console.log(`Total meshes found: ${meshCount}`);
-            
-            // Apply material to all meshes in the scene
-            // Skip if we already have a properly configured material from mirroring
-            if (!this.headMesh.material || !this.headMesh.material.side) {
-                this.applyMaterials(this.headMesh);
+                
+                // Create geometry with morph targets from MD3 vertex animation
+                const geometry = this.createGeometryFromMD3(md3Data);
+                
+                // Create material with morph support
+                const material = new THREE.MeshPhongMaterial({
+                    color: 0xffdbac,
+                    specular: 0x111111,
+                    shininess: 10,
+                    side: THREE.DoubleSide,
+                    morphTargets: true,
+                    morphNormals: true
+                });
+                
+                // Create mesh
+                this.headMesh = new THREE.Mesh(geometry, material);
+                this.headMesh.name = `${gender}Head`;
+                
+                // Initialize morph influences
+                this.headMesh.morphTargetInfluences = new Array(27).fill(0);
+                
+                // Debug morph setup
+                console.log('Mesh morph setup:', {
+                    morphTargetInfluences: this.headMesh.morphTargetInfluences,
+                    morphAttributes: geometry.morphAttributes,
+                    morphTargetsRelative: geometry.morphTargetsRelative,
+                    material: material
+                });
+                
+                // Store morph mapping for reference
+                this.realMorphMapping = this.createRealMorphMapping();
+                
+            } else {
+                // Fallback to OBJ loading
+                const modelPath = gender === 'female' 
+                    ? '/obj_files/female_head.obj'
+                    : '/obj_files/male_head.obj';
+                    
+                console.log(`Loading ${gender} OBJ model:`, modelPath);
+                const object = await this.objLoader.loadAsync(modelPath);
+                
+                this.headMesh = object;
+                this.mirrorHeadGeometry();
+                this.setupMorphTargets();
             }
             
-            // Ensure proper scale and position
+            // Common setup for both MD3 and OBJ
             this.headMesh.scale.setScalar(1);
             this.headMesh.position.set(0, 0, 0);
-            // Rotate 90 degrees around X to face forward, then 180 around Y to flip upright
-            this.headMesh.rotation.set(Math.PI / 2, Math.PI, 0);
             
-            // Make sure all children are visible
-            this.headMesh.traverse((child) => {
-                if (child.isMesh) {
-                    child.visible = true;
-                    child.castShadow = true;
-                    child.receiveShadow = true;
-                }
-            });
+            // MD3 models have different orientation than OBJ
+            if (this.useMD3) {
+                // MD3 models appear to be correctly oriented (0,0,0)
+                this.headMesh.rotation.set(0, 0, 0);
+            } else {
+                // OBJ rotation that was working
+                this.headMesh.rotation.set(Math.PI / 2, Math.PI, 0);
+            }
+            
+            this.headMesh.castShadow = true;
+            this.headMesh.receiveShadow = true;
             
             this.scene.add(this.headMesh);
             console.log(`Successfully added ${gender} head model to scene`);
-            console.log('Head mesh scale:', this.headMesh.scale);
-            console.log('Head mesh position:', this.headMesh.position);
+            
+            // Apply default skin tone
+            this.setSkinTone(this.currentSkinTone);
             
             // Debug what's in the scene
             this.debugScene();
-            
-            // Try to create synthetic morphs if the model doesn't have them
-            this.setupMorphTargets();
             
             return true;
             
@@ -556,6 +598,12 @@ export class FaceViewer {
     }
 
     setupMorphTargets() {
+        // Skip if using MD3 - morphs are already set up
+        if (this.useMD3) {
+            console.log('Using MD3 with real morph targets, skipping synthetic morph creation');
+            return;
+        }
+        
         // Since headMesh is now a single mesh after mirroring, we can work with it directly
         const headMesh = this.headMesh;
         console.log('setupMorphTargets - head mesh:', headMesh);
@@ -793,35 +841,226 @@ export class FaceViewer {
         this.headMesh.material.morphNormals = true;
     }
     
-    // Apply morph value from the 27 sliders to the 8 actual morph targets
+    // Apply morph value from the 27 sliders to the actual morph targets
     applyMorphValue(index, value) {
         if (!this.headMesh || !this.headMesh.morphTargetInfluences) return;
         
-        // Store the value
-        if (this.allMorphValues) {
-            this.allMorphValues[index] = value;
+        if (this.useMD3 && index < this.headMesh.morphTargetInfluences.length) {
+            // Direct mapping for MD3 - each slider maps to its corresponding morph
+            this.headMesh.morphTargetInfluences[index] = value;
+            console.log(`MD3 Morph ${index} set to ${value}`);
+        } else {
+            // Synthetic morph mapping for OBJ mode
+            if (this.allMorphValues) {
+                this.allMorphValues[index] = value;
+            }
+            
+            if (this.morphMapping && this.morphMapping[index]) {
+                const targets = this.morphMapping[index];
+                targets.forEach(targetIndex => {
+                    if (targetIndex < this.headMesh.morphTargetInfluences.length) {
+                        let sum = 0;
+                        let count = 0;
+                        for (let i = 0; i < 27; i++) {
+                            if (this.morphMapping[i] && this.morphMapping[i].includes(targetIndex)) {
+                                sum += (this.allMorphValues[i] || 0);
+                                count++;
+                            }
+                        }
+                        this.headMesh.morphTargetInfluences[targetIndex] = count > 0 ? sum / count : 0;
+                    }
+                });
+            }
+        }
+    }
+    
+    // Create geometry from MD3 data with morph targets
+    createGeometryFromMD3(md3Data) {
+        const surface = md3Data.surface;
+        const geometry = new THREE.BufferGeometry();
+        
+        console.log(`Surface has ${surface.numFrames} frames total`);
+        
+        // Use frame 0 as the base/reference pose
+        const baseVertices = new Float32Array(surface.frameVertices[0]);
+        const baseNormals = new Float32Array(surface.frameNormals[0]);
+        const uvArray = new Float32Array(surface.uvs);
+        const indexArray = new Uint16Array(surface.indices);
+        
+        // Mirror the geometry to create full head
+        const mirroredData = this.mirrorMD3Geometry(baseVertices, baseNormals, uvArray, indexArray);
+        
+        // Set base geometry with mirrored data
+        geometry.setAttribute('position', new THREE.BufferAttribute(mirroredData.positions, 3));
+        geometry.setAttribute('normal', new THREE.BufferAttribute(mirroredData.normals, 3));
+        geometry.setAttribute('uv', new THREE.BufferAttribute(mirroredData.uvs, 2));
+        geometry.setIndex(new THREE.BufferAttribute(mirroredData.indices, 1));
+        
+        // Create morph attributes from vertex animation frames
+        const morphPositions = [];
+        const morphNormals = [];
+        
+        // Map our slider indices to Mount & Blade's frame numbers
+        // Try a simpler approach first - maybe frames are sequential starting at 1
+        const sliderToFrameMap = {};
+        
+        // First, try direct sequential mapping starting from frame 1
+        for (let i = 0; i < 27; i++) {
+            sliderToFrameMap[i] = i + 1; // Frame 1, 2, 3... 27
         }
         
-        // If we have mapping, apply to the relevant morph targets
-        if (this.morphMapping && this.morphMapping[index]) {
-            const targets = this.morphMapping[index];
-            targets.forEach(targetIndex => {
-                if (targetIndex < this.headMesh.morphTargetInfluences.length) {
-                    // Average multiple inputs that map to the same target
-                    let sum = 0;
-                    let count = 0;
-                    for (let i = 0; i < 27; i++) {
-                        if (this.morphMapping[i] && this.morphMapping[i].includes(targetIndex)) {
-                            sum += (this.allMorphValues[i] || 0);
-                            count++;
-                        }
-                    }
-                    this.headMesh.morphTargetInfluences[targetIndex] = count > 0 ? sum / count : 0;
-                }
-            });
-        } else if (index < 8) {
-            // Fallback: direct mapping for first 8
-            this.headMesh.morphTargetInfluences[index] = value;
+        console.log('Testing sequential frame mapping (1-27)');
+        
+        // If we have enough frames, we could also test the 10x mapping
+        if (surface.numFrames > 270) {
+            console.log('MD3 has enough frames for 10x mapping, but using sequential for now');
         }
+        
+        // Create morphs based on our mapping
+        for (let sliderIndex = 0; sliderIndex < 27; sliderIndex++) {
+            const frameNumber = sliderToFrameMap[sliderIndex];
+            
+            if (frameNumber < surface.numFrames) {
+                // Get frame vertices and mirror them
+                const frameVerts = new Float32Array(surface.frameVertices[frameNumber]);
+                const frameNorms = new Float32Array(surface.frameNormals[frameNumber]);
+                
+                const mirroredFrame = this.mirrorMD3Geometry(frameVerts, frameNorms, uvArray, indexArray);
+                
+                morphPositions.push(new THREE.BufferAttribute(mirroredFrame.positions, 3));
+                morphNormals.push(new THREE.BufferAttribute(mirroredFrame.normals, 3));
+                
+                console.log(`Slider ${sliderIndex} -> Frame ${frameNumber}`);
+            }
+        }
+        
+        // Assign morph attributes
+        geometry.morphAttributes.position = morphPositions;
+        geometry.morphAttributes.normal = morphNormals;
+        
+        // Convert absolute morphs to relative (deltas from base)
+        // This might fix the zooming issue
+        const basePositions = geometry.attributes.position.array;
+        // const baseNormals = geometry.attributes.normal.array;
+        
+        for (let i = 0; i < morphPositions.length; i++) {
+            const morphPosArray = morphPositions[i].array;
+            const morphNormArray = morphNormals[i].array;
+            
+            // Calculate deltas
+            for (let j = 0; j < morphPosArray.length; j++) {
+                morphPosArray[j] = morphPosArray[j] - basePositions[j];
+            }
+            for (let j = 0; j < morphNormArray.length; j++) {
+                morphNormArray[j] = morphNormArray[j] - baseNormals[j];
+            }
+        }
+        
+        // Now using relative morphs
+        geometry.morphTargetsRelative = true;
+        
+        console.log(`Created geometry with ${morphPositions.length} morph targets`);
+        console.log('Morph mode: relative (converted from absolute)');
+        
+        return geometry;
+    }
+    
+    // Mirror MD3 geometry to create full head
+    mirrorMD3Geometry(positions, normals, uvs, indices) {
+        const vertexCount = positions.length / 3;
+        
+        // Create arrays for the full head (double the size)
+        const fullPositions = new Float32Array(positions.length * 2);
+        const fullNormals = new Float32Array(normals.length * 2);
+        const fullUvs = new Float32Array(uvs.length * 2);
+        
+        // Copy original half
+        fullPositions.set(positions, 0);
+        fullNormals.set(normals, 0);
+        
+        // Copy and flip UVs for original half
+        for (let i = 0; i < uvs.length / 2; i++) {
+            const idx = i * 2;
+            fullUvs[idx] = uvs[idx];
+            fullUvs[idx + 1] = 1 - uvs[idx + 1]; // Flip V
+        }
+        
+        // Create mirrored half
+        for (let i = 0; i < vertexCount; i++) {
+            const idx = i * 3;
+            const mirrorIdx = (vertexCount + i) * 3;
+            
+            // Mirror X position
+            fullPositions[mirrorIdx] = -positions[idx];
+            fullPositions[mirrorIdx + 1] = positions[idx + 1];
+            fullPositions[mirrorIdx + 2] = positions[idx + 2];
+            
+            // Mirror normals
+            fullNormals[mirrorIdx] = -normals[idx];
+            fullNormals[mirrorIdx + 1] = normals[idx + 1];
+            fullNormals[mirrorIdx + 2] = normals[idx + 2];
+        }
+        
+        // Mirror UVs
+        const uvCount = uvs.length / 2;
+        for (let i = 0; i < uvCount; i++) {
+            const idx = i * 2;
+            const mirrorIdx = (uvCount + i) * 2;
+            fullUvs[mirrorIdx] = 1 - uvs[idx]; // Mirror U
+            fullUvs[mirrorIdx + 1] = 1 - uvs[idx + 1]; // Copy flipped V
+        }
+        
+        // Create full indices
+        const fullIndices = new Uint16Array(indices.length * 2);
+        fullIndices.set(indices, 0);
+        
+        // Create mirrored indices (reversed winding)
+        for (let i = 0; i < indices.length; i += 3) {
+            const mirrorIdx = indices.length + i;
+            fullIndices[mirrorIdx] = indices[i] + vertexCount;
+            fullIndices[mirrorIdx + 1] = indices[i + 2] + vertexCount; // Reversed
+            fullIndices[mirrorIdx + 2] = indices[i + 1] + vertexCount; // Reversed
+        }
+        
+        return {
+            positions: fullPositions,
+            normals: fullNormals,
+            uvs: fullUvs,
+            indices: fullIndices
+        };
+    }
+    
+    // Create mapping for real morphs from MD3
+    createRealMorphMapping() {
+        // Direct mapping - each of the 27 sliders maps to its morph target
+        return {
+            'Face Width': 0,
+            'Face Ratio': 1,
+            'Face Depth': 2,
+            'Temple Width': 3,
+            'Eyebrow Shape': 4,
+            'Eyebrow Depth': 5,
+            'Eyebrow Height': 6,
+            'Eyebrow Position': 7,
+            'Eyelids': 8,
+            'Eye Depth': 9,
+            'Eye Shape': 10,
+            'Eye to Eye Dist': 11,
+            'Eye Width': 12,
+            'Cheek Bones': 13,
+            'Nose Bridge': 14,
+            'Nose Shape': 15,
+            'Nose Size': 16,
+            'Nose Width': 17,
+            'Nose Height': 18,
+            'Cheeks': 19,
+            'Mouth Width': 20,
+            'Mouth-Nose Distance': 21,
+            'Jaw Position': 22,
+            'Jaw Width': 23,
+            'Chin Forward': 24,
+            'Chin Shape': 25,
+            'Chin Size': 26
+        };
     }
 }

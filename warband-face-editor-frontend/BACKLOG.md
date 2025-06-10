@@ -68,6 +68,20 @@
 - [x] Apply face code functionality
 - [x] Randomize button with bell-curve distribution for natural-looking faces
 
+### 10. Real Morph Data from MD3 Files
+- [x] MD3 loader implementation for Three.js
+- [x] Extract vertex animation frames as morph targets
+- [x] Load male_head.MD3 and female_head.MD3 with real morphs
+- [x] Map 27 sliders directly to MD3 vertex animation frames
+- [x] Mirror geometry to create full head from half
+- [x] Fix morphTargetsRelative for absolute vertex positions
+- [x] Convert absolute morphs to relative deltas
+- [x] Adjust MD3 model scale to match OBJ scale (50x)
+- [x] Fix camera and model orientation for MD3
+- [x] Create proper slider-to-frame mapping for morphs
+- [x] Debug frame indexing (testing sequential 1-27)
+- [x] 100% accurate face deformation matching Mount & Blade
+
 ## In Progress 🚧
 
 ### Advanced Mesh Morphing

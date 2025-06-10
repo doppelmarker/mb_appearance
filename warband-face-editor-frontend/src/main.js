@@ -17,7 +17,7 @@ const camera = new THREE.PerspectiveCamera(
     0.1, 
     1000
 );
-camera.position.set(0, 0, 1); // Position camera closer for better face view
+camera.position.set(0, 0, 2); // Position camera at good distance for face view
 
 // Renderer setup
 const renderer = new THREE.WebGLRenderer({ 
@@ -29,16 +29,28 @@ renderer.setPixelRatio(window.devicePixelRatio);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 
 // Lighting setup
-const ambientLight = new THREE.AmbientLight(0x404040, 2); // Increase ambient light
+const ambientLight = new THREE.AmbientLight(0x606060, 1.5); // Moderate ambient light
 scene.add(ambientLight);
 
-const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-directionalLight.position.set(0, 5, 10); // Move light to front
+// Main front light - strong light on the face (flipped to negative Z)
+const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
+directionalLight.position.set(0, 1, -4); // Now from behind camera to light the face
 scene.add(directionalLight);
 
-const fillLight = new THREE.DirectionalLight(0x8888ff, 0.5); // Increase fill light
-fillLight.position.set(-5, 0, 5); // Move to illuminate face from side
+// Left fill light (flipped)
+const fillLight = new THREE.DirectionalLight(0xaaaaff, 0.8);
+fillLight.position.set(3, 0.5, -2); // From right-back to illuminate left face
 scene.add(fillLight);
+
+// Right fill light (flipped)
+const fillLight2 = new THREE.DirectionalLight(0xffaaaa, 0.8);
+fillLight2.position.set(-3, 0.5, -2); // From left-back to illuminate right face
+scene.add(fillLight2);
+
+// Reduced back light - now actually lighting the back (flipped)
+const backLight = new THREE.DirectionalLight(0xffffff, 0.1);
+backLight.position.set(0, 0, 8); // Now in front, very dim
+scene.add(backLight);
 
 // Camera controls
 const controls = new OrbitControls(camera, renderer.domElement);
