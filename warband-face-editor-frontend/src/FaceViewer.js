@@ -896,6 +896,9 @@ export class FaceViewer {
         geometry.setAttribute('uv', new THREE.BufferAttribute(mirroredData.uvs, 2));
         geometry.setIndex(new THREE.BufferAttribute(mirroredData.indices, 1));
         
+        // Ensure normals are properly normalized after mirroring
+        geometry.normalizeNormals();
+        
         // Create morph attributes from vertex animation frames
         const morphPositions = [];
         const morphNormals = [];
@@ -941,7 +944,7 @@ export class FaceViewer {
         // Convert absolute morphs to relative (deltas from base)
         // This might fix the zooming issue
         const basePositions = geometry.attributes.position.array;
-        // const baseNormals = geometry.attributes.normal.array;
+        const geometryNormals = geometry.attributes.normal.array;
         
         for (let i = 0; i < morphPositions.length; i++) {
             const morphPosArray = morphPositions[i].array;
@@ -952,7 +955,7 @@ export class FaceViewer {
                 morphPosArray[j] = morphPosArray[j] - basePositions[j];
             }
             for (let j = 0; j < morphNormArray.length; j++) {
-                morphNormArray[j] = morphNormArray[j] - baseNormals[j];
+                morphNormArray[j] = morphNormArray[j] - geometryNormals[j];
             }
         }
         
