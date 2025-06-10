@@ -1,37 +1,39 @@
 export class FaceCodeParser {
-    // Mapping from frontend slider index to frame INDEX (not frame name) based on MD3 structure
+    // Mapping corrected based on actual testing - rotating the circular permutations
     static sliderToFrameMapping = {
-        // The MD3 has frames: T0, T10, T20, T30... T280 (29 frames total)
-        // Frame names correspond to the original M&B morph frame numbers
-        26: 1,    // 'Chin Size' -> frame index 1 (T10)
-        22: 2,    // 'Jaw Position' -> frame index 2 (T20)
-        20: 3,    // 'Mouth Width' -> frame index 3 (T30)
-        21: 4,    // 'Mouth-Nose Distance' -> frame index 4 (T40)
-        19: 5,    // 'Cheeks' -> frame index 5 (T50)
-        18: 6,    // 'Nose Height' -> frame index 6 (T60)
-        17: 7,    // 'Nose Width' -> frame index 7 (T70)
-        16: 8,    // 'Nose Size' -> frame index 8 (T80)
-        14: 9,    // 'Nose Bridge' -> frame index 9 (T90)
-        13: 10,   // 'Cheek Bones' -> frame index 10 (T100)
-        11: 11,   // 'Eye to Eye Dist' -> frame index 11 (T110)
-        10: 12,   // 'Eye Shape' -> frame index 12 (T120)
-        9: 13,    // 'Eye Depth' -> frame index 13 (T130)
-        8: 14,    // 'Eyelids' -> frame index 14 (T140)
-        12: 15,   // 'Eye Width' -> frame index 15 (T150)
-        7: 16,    // 'Eyebrow Position' -> frame index 16 (T160)
-        
-        // Additional frames if available
-        0: 17,    // 'Face Width' -> frame index 17 (T170)
-        1: 18,    // 'Face Ratio' -> frame index 18 (T180)
-        2: 19,    // 'Face Depth' -> frame index 19 (T190)
-        3: 20,    // 'Temple Width' -> frame index 20 (T200)
-        4: 21,    // 'Eyebrow Shape' -> frame index 21 (T210)
-        5: 22,    // 'Eyebrow Depth' -> frame index 22 (T220)
-        6: 23,    // 'Eyebrow Height' -> frame index 23 (T230)
-        15: 24,   // 'Nose Shape' -> frame index 24 (T240)
-        23: 25,   // 'Jaw Width' -> frame index 25 (T250)
-        24: 26,   // 'Chin Forward' -> frame index 26 (T260)
-        25: 27    // 'Chin Shape' -> frame index 27 (T270)
+        // Core sliders that work correctly (no change needed)
+        5: 22,    // 'Eyebrow Depth' -> T220 ✓
+        7: 16,    // 'Eyebrow Position' -> T160 ✓  
+        8: 14,    // 'Eyelids' -> T140 ✓
+        9: 13,    // 'Eye Depth' -> T130 ✓
+        10: 12,   // 'Eye Shape' -> T120 ✓
+        11: 11,   // 'Eye to Eye Dist' -> T110 ✓
+        12: 15,   // 'Eye Width' -> T150 ✓
+        13: 10,   // 'Cheek Bones' -> T100 ✓
+        14: 9,    // 'Nose Bridge' -> T90 ✓
+        16: 8,    // 'Nose Size' -> T80 ✓
+        17: 7,    // 'Nose Width' -> T70 ✓
+        18: 6,    // 'Nose Height' -> T60 ✓
+        19: 5,    // 'Cheeks' -> T50 ✓
+
+        // Cycle 1 (5 sliders) - rotated to fix the circular permutation
+        // Face Width should get Face Depth's frame, Face Depth should get Mouth Width's frame, etc.
+        0: 19,    // 'Face Width' -> T190 (was controlling Face Depth, now controls Face Width)
+        2: 3,     // 'Face Depth' -> T30 (was controlling Mouth Width, now controls Face Depth)  
+        20: 20,   // 'Mouth Width' -> T200 (was controlling Temple Width, now controls Mouth Width)
+        3: 23,    // 'Temple Width' -> T230 (was controlling Eyebrow Height, now controls Temple Width)
+        6: 17,    // 'Eyebrow Height' -> T170 (was controlling Face Width, now controls Eyebrow Height)
+
+        // Cycle 2 (9 sliders) - rotated to fix the circular permutation
+        1: 4,     // 'Face Ratio' -> T40 (was controlling Mouth-Nose Dist, now controls Face Ratio)
+        21: 25,   // 'Mouth-Nose Distance' -> T250 (was controlling Jaw Width, now controls Mouth-Nose Dist)
+        23: 24,   // 'Jaw Width' -> T240 (was controlling Nose Shape, now controls Jaw Width)
+        15: 27,   // 'Nose Shape' -> T270 (was controlling Chin Shape, now controls Nose Shape)
+        25: 26,   // 'Chin Shape' -> T260 (was controlling Chin Forward, now controls Chin Shape)
+        24: 1,    // 'Chin Forward' -> T10 (was controlling Chin Size, now controls Chin Forward)
+        26: 2,    // 'Chin Size' -> T20 (was controlling Jaw Position, now controls Chin Size)
+        22: 21,   // 'Jaw Position' -> T210 (was controlling Eyebrow Shape, now controls Jaw Position)
+        4: 18     // 'Eyebrow Shape' -> T180 (was controlling Face Ratio, now controls Eyebrow Shape)
     };
 
     // Legacy mapping for face code parsing (morph key based)
