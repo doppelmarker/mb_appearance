@@ -1,7 +1,85 @@
 export class FaceCodeParser {
+    // Mapping from frontend slider index to frame INDEX (not frame name) based on MD3 structure
+    static sliderToFrameMapping = {
+        // The MD3 has frames: T0, T10, T20, T30... T280 (29 frames total)
+        // Frame names correspond to the original M&B morph frame numbers
+        26: 1,    // 'Chin Size' -> frame index 1 (T10)
+        22: 2,    // 'Jaw Position' -> frame index 2 (T20)
+        20: 3,    // 'Mouth Width' -> frame index 3 (T30)
+        21: 4,    // 'Mouth-Nose Distance' -> frame index 4 (T40)
+        19: 5,    // 'Cheeks' -> frame index 5 (T50)
+        18: 6,    // 'Nose Height' -> frame index 6 (T60)
+        17: 7,    // 'Nose Width' -> frame index 7 (T70)
+        16: 8,    // 'Nose Size' -> frame index 8 (T80)
+        14: 9,    // 'Nose Bridge' -> frame index 9 (T90)
+        13: 10,   // 'Cheek Bones' -> frame index 10 (T100)
+        11: 11,   // 'Eye to Eye Dist' -> frame index 11 (T110)
+        10: 12,   // 'Eye Shape' -> frame index 12 (T120)
+        9: 13,    // 'Eye Depth' -> frame index 13 (T130)
+        8: 14,    // 'Eyelids' -> frame index 14 (T140)
+        12: 15,   // 'Eye Width' -> frame index 15 (T150)
+        7: 16,    // 'Eyebrow Position' -> frame index 16 (T160)
+        
+        // Additional frames if available
+        0: 17,    // 'Face Width' -> frame index 17 (T170)
+        1: 18,    // 'Face Ratio' -> frame index 18 (T180)
+        2: 19,    // 'Face Depth' -> frame index 19 (T190)
+        3: 20,    // 'Temple Width' -> frame index 20 (T200)
+        4: 21,    // 'Eyebrow Shape' -> frame index 21 (T210)
+        5: 22,    // 'Eyebrow Depth' -> frame index 22 (T220)
+        6: 23,    // 'Eyebrow Height' -> frame index 23 (T230)
+        15: 24,   // 'Nose Shape' -> frame index 24 (T240)
+        23: 25,   // 'Jaw Width' -> frame index 25 (T250)
+        24: 26,   // 'Chin Forward' -> frame index 26 (T260)
+        25: 27    // 'Chin Shape' -> frame index 27 (T270)
+    };
+
+    // Legacy mapping for face code parsing (morph key based)
+    static sliderToMorphKeyMapping = {
+        26: 0,    // 'Chin Size' -> morph_key_00
+        22: 1,    // 'Jaw Position' -> morph_key_01
+        20: 2,    // 'Mouth Width' -> morph_key_02
+        21: 3,    // 'Mouth-Nose Distance' -> morph_key_03
+        19: 4,    // 'Cheeks' -> morph_key_04
+        18: 5,    // 'Nose Height' -> morph_key_05
+        17: 6,    // 'Nose Width' -> morph_key_06
+        16: 7,    // 'Nose Size' -> morph_key_07
+        14: 8,    // 'Nose Bridge' -> morph_key_08
+        13: 9,    // 'Cheek Bones' -> morph_key_09
+        11: 10,   // 'Eye to Eye Dist' -> morph_key_10
+        10: 11,   // 'Eye Shape' -> morph_key_11
+        9: 12,    // 'Eye Depth' -> morph_key_12
+        8: 13,    // 'Eyelids' -> morph_key_13
+        12: 14,   // 'Eye Width' -> morph_key_14
+        7: 15,    // 'Eyebrow Position' -> morph_key_15
+        
+        // Unmapped sliders
+        0: 16,    // 'Face Width' -> morph_key_16
+        1: 17,    // 'Face Ratio' -> morph_key_17
+        2: 18,    // 'Face Depth' -> morph_key_18
+        3: 19,    // 'Temple Width' -> morph_key_19
+        4: 20,    // 'Eyebrow Shape' -> morph_key_20
+        5: 21,    // 'Eyebrow Depth' -> morph_key_21
+        6: 22,    // 'Eyebrow Height' -> morph_key_22
+        15: 23,   // 'Nose Shape' -> morph_key_23
+        23: 24,   // 'Jaw Width' -> morph_key_24
+        24: 25,   // 'Chin Forward' -> morph_key_25
+        25: 26    // 'Chin Shape' -> morph_key_26
+    };
+
+    // Reverse mapping from morph key to slider index
+    static morphKeyToSliderMapping = {};
+    
+    // Initialize reverse mapping
+    static {
+        for (const [sliderIndex, morphKey] of Object.entries(this.sliderToMorphKeyMapping)) {
+            this.morphKeyToSliderMapping[morphKey] = parseInt(sliderIndex);
+        }
+    }
+
     /**
      * Parse a Mount & Blade Warband face code into components
-     * For MVP, we focus on extracting the first 8 morphs from block 1
+     * Extracts all 43 morph keys and maps them to slider values
      */
     static parse(faceCode) {
         // Remove 0x prefix if present
@@ -27,53 +105,35 @@ export class FaceCodeParser {
             faceCode.slice(48, 64)   // Block 3: unused
         ];
         
-        // Extract all 27 morphs from blocks 1 and 2
-        const morphs = [];
+        // Extract all 43 morph keys from blocks 1 and 2
+        const morphKeys = new Array(43).fill(0);
         
-        // Block 1 contains morphs 0-20 (21 morphs * 3 bits = 63 bits)
-        const block1 = blocks[1];
+        // Block 1 contains morph_key_00 through morph_key_20 (21 morphs * 3 bits = 63 bits)
+        const block1Int = BigInt('0x' + blocks[1]);
         for (let i = 0; i < 21; i++) {
-            const byteOffset = Math.floor((i * 3) / 8);
-            const bitOffset = (i * 3) % 8;
-            const hexOffset = byteOffset * 2;
-            
-            // Get the morph value (3 bits)
-            let value;
-            if (bitOffset <= 5) {
-                // Morph fits within single byte
-                const byte = parseInt(block1.substr(hexOffset, 2), 16);
-                value = (byte >> bitOffset) & 0x7;
-            } else {
-                // Morph crosses byte boundary
-                const byte1 = parseInt(block1.substr(hexOffset, 2), 16);
-                const byte2 = parseInt(block1.substr(hexOffset + 2, 2), 16);
-                const combined = byte1 | (byte2 << 8);
-                value = (combined >> bitOffset) & 0x7;
-            }
-            morphs.push(value);
+            const bitPosition = BigInt(i * 3);
+            const value = Number((block1Int >> bitPosition) & 0x7n);
+            morphKeys[i] = value;
         }
         
-        // Block 2 contains morphs 21-26 (6 more morphs)
-        const block2 = blocks[2];
-        for (let i = 0; i < 6; i++) {
-            const byteOffset = Math.floor((i * 3) / 8);
-            const bitOffset = (i * 3) % 8;
-            const hexOffset = byteOffset * 2;
-            
-            let value;
-            if (bitOffset <= 5) {
-                const byte = parseInt(block2.substr(hexOffset, 2), 16);
-                value = (byte >> bitOffset) & 0x7;
-            } else {
-                const byte1 = parseInt(block2.substr(hexOffset, 2), 16);
-                const byte2 = parseInt(block2.substr(hexOffset + 2, 2), 16);
-                const combined = byte1 | (byte2 << 8);
-                value = (combined >> bitOffset) & 0x7;
-            }
-            morphs.push(value);
+        // Block 2 contains morph_key_21 through morph_key_42 (22 morphs * 3 bits = 66 bits)
+        const block2Int = BigInt('0x' + blocks[2]);
+        for (let i = 0; i < 22; i++) {
+            const bitPosition = BigInt(i * 3);
+            const value = Number((block2Int >> bitPosition) & 0x7n);
+            morphKeys[21 + i] = value;
         }
         
-        // Also extract some appearance attributes from block 0 for future use
+        // Convert morph keys to slider values using our mapping
+        const sliderValues = new Array(27).fill(0);
+        for (let morphKey = 0; morphKey < morphKeys.length; morphKey++) {
+            const sliderIndex = this.morphKeyToSliderMapping[morphKey];
+            if (sliderIndex !== undefined) {
+                sliderValues[sliderIndex] = morphKeys[morphKey];
+            }
+        }
+        
+        // Also extract appearance attributes from block 0
         const block0Int = parseInt(blocks[0], 16);
         
         const appearance = {
@@ -87,68 +147,52 @@ export class FaceCodeParser {
         };
         
         return {
-            morphs: morphs,
+            morphs: sliderValues,      // Now correctly mapped to slider indices
+            morphKeys: morphKeys,      // Raw morph key values for debugging
             appearance: appearance,
             raw: faceCode
         };
     }
     
     /**
-     * Generate a face code from morph values
-     * Encodes all 27 morphs
+     * Generate a face code from slider values
+     * Maps slider values to correct morph keys and encodes them
      */
-    static generate(morphValues) {
+    static generate(sliderValues) {
         // Ensure we have at least 27 values
-        const morphs = [...morphValues];
-        while (morphs.length < 27) {
-            morphs.push(0);
+        const sliders = [...sliderValues];
+        while (sliders.length < 27) {
+            sliders.push(0);
         }
         
-        // Build block 1 with morphs 0-20
-        let block1Hex = '';
-        const block1Bits = [];
+        // Create array of 43 morph keys initialized to 0
+        const morphKeys = new Array(43).fill(0);
+        
+        // Map slider values to correct morph keys
+        for (let sliderIndex = 0; sliderIndex < sliders.length; sliderIndex++) {
+            const morphKey = this.sliderToMorphKeyMapping[sliderIndex];
+            if (morphKey !== undefined) {
+                morphKeys[morphKey] = Math.min(7, Math.max(0, sliders[sliderIndex] || 0));
+            }
+        }
+        
+        // Build block 1 with morph_key_00 through morph_key_20
+        let block1Value = 0n;
         for (let i = 0; i < 21; i++) {
-            const value = Math.min(7, Math.max(0, morphs[i] || 0)); // Clamp to 0-7
-            // Add 3 bits for this morph
-            block1Bits.push((value >> 2) & 1);
-            block1Bits.push((value >> 1) & 1);
-            block1Bits.push(value & 1);
+            const value = BigInt(morphKeys[i]);
+            const bitPosition = BigInt(i * 3);
+            block1Value |= value << bitPosition;
         }
+        const block1Hex = block1Value.toString(16).padStart(16, '0');
         
-        // Convert bits to hex
-        for (let i = 0; i < 64; i += 4) {
-            let nibble = 0;
-            for (let j = 0; j < 4 && i + j < block1Bits.length; j++) {
-                nibble |= (block1Bits[i + j] << j);
-            }
-            block1Hex = nibble.toString(16) + block1Hex;
+        // Build block 2 with morph_key_21 through morph_key_42
+        let block2Value = 0n;
+        for (let i = 0; i < 22; i++) {
+            const value = BigInt(morphKeys[21 + i]);
+            const bitPosition = BigInt(i * 3);
+            block2Value |= value << bitPosition;
         }
-        block1Hex = block1Hex.padStart(16, '0');
-        
-        // Build block 2 with morphs 21-26
-        let block2Hex = '';
-        const block2Bits = [];
-        for (let i = 21; i < 27; i++) {
-            const value = Math.min(7, Math.max(0, morphs[i] || 0));
-            block2Bits.push((value >> 2) & 1);
-            block2Bits.push((value >> 1) & 1);
-            block2Bits.push(value & 1);
-        }
-        
-        // Pad remaining bits
-        while (block2Bits.length < 64) {
-            block2Bits.push(0);
-        }
-        
-        // Convert bits to hex
-        for (let i = 0; i < 64; i += 4) {
-            let nibble = 0;
-            for (let j = 0; j < 4; j++) {
-                nibble |= (block2Bits[i + j] << j);
-            }
-            block2Hex = nibble.toString(16) + block2Hex;
-        }
-        block2Hex = block2Hex.padStart(16, '0');
+        const block2Hex = block2Value.toString(16).padStart(16, '0');
         
         // Default values for other blocks
         const block0 = "0000000000000000"; // Default appearance

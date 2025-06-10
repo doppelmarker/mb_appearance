@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 import { DDSLoader } from 'three/addons/loaders/DDSLoader.js';
 import { MD3Loader } from './MD3Loader.js';
+import { FaceCodeParser } from './FaceCodeParser.js';
 
 export class FaceViewer {
     constructor(scene) {
@@ -64,17 +65,25 @@ export class FaceViewer {
                     color: 0xffdbac,
                     specular: 0x111111,
                     shininess: 10,
-                    side: THREE.DoubleSide,
-                    morphTargets: true,
-                    morphNormals: true
+                    side: THREE.DoubleSide
                 });
+                
+                // Enable morphing on the material (newer Three.js approach)
+                material.defines = material.defines || {};
+                material.defines.USE_MORPHTARGETS = '';
+                material.defines.USE_MORPHNORMALS = '';
                 
                 // Create mesh
                 this.headMesh = new THREE.Mesh(geometry, material);
                 this.headMesh.name = `${gender}Head`;
                 
-                // Initialize morph influences
-                this.headMesh.morphTargetInfluences = new Array(27).fill(0);
+                // CRITICAL: Set morphTargetInfluences to correct size based on actual morph targets created
+                if (this.morphTargetCount > 0) {
+                    this.headMesh.morphTargetInfluences = new Array(this.morphTargetCount).fill(0);
+                    console.log(`Set morphTargetInfluences size to ${this.morphTargetCount}`, this.headMesh.morphTargetInfluences);
+                } else {
+                    console.warn('No morph targets were created!');
+                }
                 
                 // Debug morph setup
                 console.log('Mesh morph setup:', {
@@ -86,6 +95,16 @@ export class FaceViewer {
                 
                 // Store morph mapping for reference
                 this.realMorphMapping = this.createRealMorphMapping();
+                
+                // TEST: Try setting first morph target to see if morphing works at all
+                if (this.headMesh.morphTargetInfluences.length > 0) {
+                    console.log('TESTING: Setting first morph target influence to 1.0 for 3 seconds...');
+                    this.headMesh.morphTargetInfluences[0] = 1.0;
+                    setTimeout(() => {
+                        console.log('TESTING: Resetting first morph target influence to 0');
+                        this.headMesh.morphTargetInfluences[0] = 0.0;
+                    }, 3000);
+                }
                 
             } else {
                 // Fallback to OBJ loading
@@ -282,10 +301,13 @@ export class FaceViewer {
             shininess: 10,
             side: THREE.DoubleSide,
             transparent: false,
-            opacity: 1.0,
-            morphTargets: true,  // Enable morph targets
-            morphNormals: true   // Enable normal morphing
+            opacity: 1.0
         });
+        
+        // Enable morphing (newer Three.js approach)
+        material.defines = material.defines || {};
+        material.defines.USE_MORPHTARGETS = '';
+        material.defines.USE_MORPHNORMALS = '';
         
         const fullHeadMesh = new THREE.Mesh(fullGeometry, material);
         fullHeadMesh.name = 'FullHead';
@@ -544,9 +566,11 @@ export class FaceViewer {
             26: [0]      // Chin Size -> chin
         };
         
-        // Update the material to support morphing
+        // Update the material to support morphing (newer Three.js approach)
         if (mainMesh.material) {
-            mainMesh.material.morphTargets = true;
+            mainMesh.material.defines = mainMesh.material.defines || {};
+            mainMesh.material.defines.USE_MORPHTARGETS = '';
+            mainMesh.material.defines.USE_MORPHNORMALS = '';
             mainMesh.material.needsUpdate = true;
         }
         
@@ -836,27 +860,40 @@ export class FaceViewer {
             console.log(`Applied default skin color (no texture available for ${this.currentGender} ${tone})`);
         }
         
-        // Ensure morph targets stay enabled
-        this.headMesh.material.morphTargets = true;
-        this.headMesh.material.morphNormals = true;
+        // Ensure morph targets stay enabled (newer Three.js approach)
+        this.headMesh.material.defines = this.headMesh.material.defines || {};
+        this.headMesh.material.defines.USE_MORPHTARGETS = '';
+        this.headMesh.material.defines.USE_MORPHNORMALS = '';
+        this.headMesh.material.needsUpdate = true;
     }
     
     // Apply morph value from the 27 sliders to the actual morph targets
-    applyMorphValue(index, value) {
+    applyMorphValue(sliderIndex, value) {
         if (!this.headMesh || !this.headMesh.morphTargetInfluences) return;
         
-        if (this.useMD3 && index < this.headMesh.morphTargetInfluences.length) {
-            // Direct mapping for MD3 - each slider maps to its corresponding morph
-            this.headMesh.morphTargetInfluences[index] = value;
-            console.log(`MD3 Morph ${index} set to ${value}`);
+        console.log(`applyMorphValue called: slider ${sliderIndex} (${this.getSliderName(sliderIndex)}) value ${value}`);
+        
+        if (this.useMD3) {
+            // Use the pre-computed mapping from createGeometryFromMD3
+            const morphTargetIndex = this.sliderToMorphTargetIndex?.[sliderIndex];
+            console.log(`Mapping slider ${sliderIndex} to morph target ${morphTargetIndex}`);
+            
+            if (morphTargetIndex !== undefined && morphTargetIndex < this.headMesh.morphTargetInfluences.length) {
+                const oldValue = this.headMesh.morphTargetInfluences[morphTargetIndex];
+                this.headMesh.morphTargetInfluences[morphTargetIndex] = value;
+                console.log(`✓ Slider ${sliderIndex} (${this.getSliderName(sliderIndex)}) -> Morph Target ${morphTargetIndex}: ${oldValue} -> ${value}`);
+                console.log('Current morph influences:', [...this.headMesh.morphTargetInfluences]);
+            } else {
+                console.warn(`✗ Slider ${sliderIndex} (${this.getSliderName(sliderIndex)}) has no corresponding morph target (index: ${morphTargetIndex}, max: ${this.headMesh.morphTargetInfluences.length - 1})`);
+            }
         } else {
             // Synthetic morph mapping for OBJ mode
             if (this.allMorphValues) {
-                this.allMorphValues[index] = value;
+                this.allMorphValues[sliderIndex] = value;
             }
             
-            if (this.morphMapping && this.morphMapping[index]) {
-                const targets = this.morphMapping[index];
+            if (this.morphMapping && this.morphMapping[sliderIndex]) {
+                const targets = this.morphMapping[sliderIndex];
                 targets.forEach(targetIndex => {
                     if (targetIndex < this.headMesh.morphTargetInfluences.length) {
                         let sum = 0;
@@ -903,46 +940,73 @@ export class FaceViewer {
         const morphPositions = [];
         const morphNormals = [];
         
-        // Map our slider indices to Mount & Blade's frame numbers
-        // Try a simpler approach first - maybe frames are sequential starting at 1
-        const sliderToFrameMap = {};
+        // Use direct frame mapping from documentation
+        const sliderToFrameMap = FaceCodeParser.sliderToFrameMapping;
         
-        // First, try direct sequential mapping starting from frame 1
-        for (let i = 0; i < 27; i++) {
-            sliderToFrameMap[i] = i + 1; // Frame 1, 2, 3... 27
-        }
+        console.log('Using correct morph key to frame mapping');
+        console.log('Slider to frame mapping:', sliderToFrameMap);
         
-        console.log('Testing sequential frame mapping (1-27)');
+        // Create mapping from slider index to morph target index
+        // Only create morph targets for sliders that have valid frames
+        this.sliderToMorphTargetIndex = {};
+        let morphTargetIndex = 0;
         
-        // If we have enough frames, we could also test the 10x mapping
-        if (surface.numFrames > 270) {
-            console.log('MD3 has enough frames for 10x mapping, but using sequential for now');
-        }
-        
-        // Create morphs based on our mapping
+        // First pass: create morph targets only for valid frames
         for (let sliderIndex = 0; sliderIndex < 27; sliderIndex++) {
             const frameNumber = sliderToFrameMap[sliderIndex];
             
-            if (frameNumber < surface.numFrames) {
+            if (frameNumber && frameNumber < surface.numFrames) {
                 // Get frame vertices and mirror them
                 const frameVerts = new Float32Array(surface.frameVertices[frameNumber]);
                 const frameNorms = new Float32Array(surface.frameNormals[frameNumber]);
+                
+                // DEBUG: Check if this frame is actually different from base frame
+                const baseVerts = new Float32Array(surface.frameVertices[0]);
+                let maxDiff = 0;
+                for (let i = 0; i < Math.min(frameVerts.length, baseVerts.length); i++) {
+                    const diff = Math.abs(frameVerts[i] - baseVerts[i]);
+                    if (diff > maxDiff) maxDiff = diff;
+                }
+                console.log(`Frame ${frameNumber} max difference from base: ${maxDiff}`);
                 
                 const mirroredFrame = this.mirrorMD3Geometry(frameVerts, frameNorms, uvArray, indexArray);
                 
                 morphPositions.push(new THREE.BufferAttribute(mirroredFrame.positions, 3));
                 morphNormals.push(new THREE.BufferAttribute(mirroredFrame.normals, 3));
                 
-                console.log(`Slider ${sliderIndex} -> Frame ${frameNumber}`);
+                // Store the mapping
+                this.sliderToMorphTargetIndex[sliderIndex] = morphTargetIndex;
+                morphTargetIndex++;
+                
+                console.log(`Slider ${sliderIndex} (${this.getSliderName(sliderIndex)}) -> Frame ${frameNumber} -> Morph Target ${this.sliderToMorphTargetIndex[sliderIndex]}`);
+            } else {
+                if (frameNumber) {
+                    console.warn(`Frame ${frameNumber} not available for slider ${sliderIndex} (only ${surface.numFrames} frames total)`);
+                } else {
+                    console.log(`No frame mapping for slider ${sliderIndex} (${this.getSliderName(sliderIndex)})`);
+                }
             }
         }
+        
+        console.log(`Created ${morphPositions.length} morph targets for ${Object.keys(this.sliderToMorphTargetIndex).length} sliders`);
+        console.log('Final slider to morph target mapping:', this.sliderToMorphTargetIndex);
         
         // Assign morph attributes
         geometry.morphAttributes.position = morphPositions;
         geometry.morphAttributes.normal = morphNormals;
         
+        // Store the morph count for setting morphTargetInfluences later
+        this.morphTargetCount = morphPositions.length;
+        console.log(`Will set morphTargetInfluences array size to ${this.morphTargetCount}`);
+        
+        // TRY WITHOUT CONVERTING TO RELATIVE MORPHS FIRST
+        // The MD3 data might already be in the right format
+        console.log('Using absolute morph targets (not converting to relative)');
+        geometry.morphTargetsRelative = false;
+        
+        // TODO: If absolute doesn't work, try relative conversion:
+        /*
         // Convert absolute morphs to relative (deltas from base)
-        // This might fix the zooming issue
         const basePositions = geometry.attributes.position.array;
         const geometryNormals = geometry.attributes.normal.array;
         
@@ -959,11 +1023,11 @@ export class FaceViewer {
             }
         }
         
-        // Now using relative morphs
         geometry.morphTargetsRelative = true;
+        */
         
         console.log(`Created geometry with ${morphPositions.length} morph targets`);
-        console.log('Morph mode: relative (converted from absolute)');
+        console.log('Morph mode: absolute (testing without conversion)');
         
         return geometry;
     }
@@ -1033,6 +1097,40 @@ export class FaceViewer {
         };
     }
     
+    // Get slider name for debugging
+    getSliderName(index) {
+        const sliderNames = [
+            'Face Width',           // 0
+            'Face Ratio',           // 1
+            'Face Depth',           // 2
+            'Temple Width',         // 3
+            'Eyebrow Shape',        // 4
+            'Eyebrow Depth',        // 5
+            'Eyebrow Height',       // 6
+            'Eyebrow Position',     // 7
+            'Eyelids',              // 8
+            'Eye Depth',            // 9
+            'Eye Shape',            // 10
+            'Eye to Eye Dist',      // 11
+            'Eye Width',            // 12
+            'Cheek Bones',          // 13
+            'Nose Bridge',          // 14
+            'Nose Shape',           // 15
+            'Nose Size',            // 16
+            'Nose Width',           // 17
+            'Nose Height',          // 18
+            'Cheeks',               // 19
+            'Mouth Width',          // 20
+            'Mouth-Nose Distance',  // 21
+            'Jaw Position',         // 22
+            'Jaw Width',            // 23
+            'Chin Forward',         // 24
+            'Chin Shape',           // 25
+            'Chin Size'             // 26
+        ];
+        return sliderNames[index] || `Slider ${index}`;
+    }
+
     // Create mapping for real morphs from MD3
     createRealMorphMapping() {
         // Direct mapping - each of the 27 sliders maps to its morph target
