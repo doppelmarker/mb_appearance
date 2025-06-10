@@ -3,8 +3,13 @@ import { FaceCodeParser } from './FaceCodeParser.js';
 export class MorphControls {
     constructor(faceViewer) {
         this.faceViewer = faceViewer;
-        this.morphValues = new Array(27).fill(0);
+        this.morphValues = new Array(27).fill(3); // Default to neutral position (3 out of 0-7, like M&B)
         this.container = this.createUI();
+        
+        // Apply default neutral morphs when initialized
+        setTimeout(() => {
+            this.applyMorphs(this.morphValues);
+        }, 100); // Small delay to ensure face is loaded
     }
     
     createUI() {
@@ -75,7 +80,7 @@ export class MorphControls {
             
             const valueSpan = document.createElement('span');
             valueSpan.id = `morph-value-${index}`;
-            valueSpan.textContent = '0';
+            valueSpan.textContent = '0'; // Will show 0 for default value 3 (3-3=0)
             valueSpan.style.color = '#4CAF50';
             
             label.appendChild(nameSpan);
@@ -85,14 +90,18 @@ export class MorphControls {
             slider.type = 'range';
             slider.min = 0;
             slider.max = 7;  // M&B uses 0-7 range
-            slider.value = 0;
+            slider.value = 3; // Default to neutral position (3 = neutral in M&B)
             slider.style.cssText = 'width: 100%; cursor: pointer;';
             
             slider.addEventListener('input', (e) => {
                 const value = parseInt(e.target.value);
                 this.morphValues[index] = value;
-                valueSpan.textContent = value;
-                this.updateMorph(index, value / 7); // Normalize to 0-1
+                // Display as -3 to +4 range (3 is neutral/0)
+                const displayValue = value - 3;
+                valueSpan.textContent = displayValue;
+                // Normalize to -1 to +1 range with 3 as center (0)
+                const normalizedValue = (value - 3) / 3.5; // Maps 0-7 to -0.86 to +1.14, then clamp
+                this.updateMorph(index, Math.max(-1, Math.min(1, normalizedValue)));
                 this.updateFaceCode();
             });
             
@@ -236,11 +245,15 @@ export class MorphControls {
         `;
         
         const testCodes = [
-            { name: 'Default', code: '0x00000000000000000000000000000000000000000000000000000000000000000' },
-            { name: 'Strong Chin', code: '0x00000000000000001b00000000000000000000000000000000000000000000000' },
-            { name: 'Long Nose', code: '0x000000000000000000db000000000000000000000000000000000000000000000' },
-            { name: 'Wide Face', code: '0x00000000000000000000db6d00000000000000000000000000000000000000000' },
-            { name: 'Mixed Features', code: '0x00000000000000001b6db6db6db6db6d000000000000000000000000000000000' }
+            { name: 'Default M&B (All 3s)', code: '0x000000000000200036db6db6db6db6db00000000000db6db0000000000000000' },
+            { name: 'All Minimized (All 0s)', code: '0x0000000000002000000000000000000000000000001c00000000000000000000' },
+            { name: 'Generated Default', code: FaceCodeParser.generate(new Array(27).fill(3)) },
+            { name: 'Generated Minimized', code: FaceCodeParser.generate(new Array(27).fill(0)) },
+            { name: 'Slight Positive', code: FaceCodeParser.generate(new Array(27).fill(4)) },
+            { name: 'Slight Negative', code: FaceCodeParser.generate(new Array(27).fill(2)) },
+            { name: 'Strong Positive', code: FaceCodeParser.generate(new Array(27).fill(6)) },
+            { name: 'Strong Negative', code: FaceCodeParser.generate(new Array(27).fill(1)) },
+            { name: 'Mixed Features', code: FaceCodeParser.generate([4,2,5,1,3,4,2,3,5,1,4,3,2,5,3,4,1,3,2,4,5,3,1,4,2,3,5]) }
         ];
         
         testCodes.forEach(test => {
@@ -399,8 +412,12 @@ export class MorphControls {
             if (index < 27) {
                 this.morphValues[index] = value;
                 this.sliders[index].value = value;
-                document.getElementById(`morph-value-${index}`).textContent = value;
-                this.updateMorph(index, value / 7);
+                // Display as -3 to +4 range (3 is neutral/0)
+                const displayValue = value - 3;
+                document.getElementById(`morph-value-${index}`).textContent = displayValue;
+                // Normalize to -1 to +1 range with 3 as center (0)
+                const normalizedValue = (value - 3) / 3.5;
+                this.updateMorph(index, Math.max(-1, Math.min(1, normalizedValue)));
             }
         });
         this.updateFaceCode();
@@ -418,15 +435,17 @@ export class MorphControls {
             // Use different randomization strategies for different features
             let value;
             
-            // For most features, use a bell curve distribution (more likely to get moderate values)
+            // For most features, use a bell curve distribution centered around 3 (neutral)
             if (i < 20) {
-                // Generate two random numbers and average them for a more natural distribution
+                // Generate values more likely to be near center (3)
                 const r1 = Math.random();
                 const r2 = Math.random();
-                value = Math.round((r1 + r2) / 2 * 7);
+                // Map to -2 to +3 range around center, then add 3
+                value = Math.round(((r1 + r2) / 2 - 0.5) * 4 + 3);
+                value = Math.max(0, Math.min(7, value)); // Clamp to 0-7
             } else {
-                // For jaw/chin features, use full range
-                value = Math.floor(Math.random() * 8);
+                // For jaw/chin features, use wider range but still centered around 3
+                value = Math.round(Math.random() * 6 + 1); // Range 1-7, slightly biased toward center
             }
             
             randomMorphs.push(value);

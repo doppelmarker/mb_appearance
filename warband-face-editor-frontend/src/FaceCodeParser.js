@@ -130,10 +130,12 @@ export class FaceCodeParser {
         const sliderValues = new Array(27).fill(0);
         for (let morphKey = 0; morphKey < morphKeys.length; morphKey++) {
             const sliderIndex = this.morphKeyToSliderMapping[morphKey];
-            if (sliderIndex !== undefined) {
+            if (sliderIndex !== undefined && sliderIndex < 27) {
                 sliderValues[sliderIndex] = morphKeys[morphKey];
             }
         }
+        
+        // Note: Hidden morphs (like morph 27) are preserved in morphKeys but not exposed in sliderValues
         
         // Also extract appearance attributes from block 0
         const block0Int = parseInt(blocks[0], 16);
@@ -178,6 +180,10 @@ export class FaceCodeParser {
             }
         }
         
+        // IMPORTANT: Set hidden morph 27 to 7 (Mount & Blade default)
+        // This is a hidden morph not exposed in the UI but required for proper face rendering
+        morphKeys[27] = 7;
+        
         // Build block 1 with morph_key_00 through morph_key_20
         let block1Value = 0n;
         for (let i = 0; i < 21; i++) {
@@ -196,8 +202,13 @@ export class FaceCodeParser {
         }
         const block2Hex = block2Value.toString(16).padStart(16, '0');
         
-        // Default values for other blocks
-        const block0 = "0000000000000000"; // Default appearance
+        // Build block 0 with default appearance attributes
+        // Mount & Blade uses skin = 2 as default
+        let block0Value = 0n;
+        // skin value 2 goes in bits 12-17
+        block0Value |= 2n << 12n;
+        const block0 = block0Value.toString(16).padStart(16, '0');
+        
         const block3 = "0000000000000000"; // Unused
         
         return `0x${block0}${block1Hex}${block2Hex}${block3}`;
