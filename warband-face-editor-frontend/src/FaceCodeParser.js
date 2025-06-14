@@ -1,72 +1,69 @@
 export class FaceCodeParser {
-    // Mapping corrected based on actual testing - rotating the circular permutations
+    // Frame mapping for 3D morph targets
+    // This mapping connects slider indices to the actual frame numbers in the 3D model
     static sliderToFrameMapping = {
-        // Core sliders that work correctly (no change needed)
-        5: 22,    // 'Eyebrow Depth' -> T220 ✓
-        7: 16,    // 'Eyebrow Position' -> T160 ✓  
-        8: 14,    // 'Eyelids' -> T140 ✓
-        9: 13,    // 'Eye Depth' -> T130 ✓
-        10: 12,   // 'Eye Shape' -> T120 ✓
-        11: 11,   // 'Eye to Eye Dist' -> T110 ✓
-        12: 15,   // 'Eye Width' -> T150 ✓
-        13: 10,   // 'Cheek Bones' -> T100 ✓
-        14: 9,    // 'Nose Bridge' -> T90 ✓
-        16: 8,    // 'Nose Size' -> T80 ✓
-        17: 7,    // 'Nose Width' -> T70 ✓
-        18: 6,    // 'Nose Height' -> T60 ✓
-        19: 5,    // 'Cheeks' -> T50 ✓
-
-        // Cycle 1 (5 sliders) - rotated to fix the circular permutation
-        // Face Width should get Face Depth's frame, Face Depth should get Mouth Width's frame, etc.
-        0: 19,    // 'Face Width' -> T190 (was controlling Face Depth, now controls Face Width)
-        2: 3,     // 'Face Depth' -> T30 (was controlling Mouth Width, now controls Face Depth)  
-        20: 20,   // 'Mouth Width' -> T200 (was controlling Temple Width, now controls Mouth Width)
-        3: 23,    // 'Temple Width' -> T230 (was controlling Eyebrow Height, now controls Temple Width)
-        6: 17,    // 'Eyebrow Height' -> T170 (was controlling Face Width, now controls Eyebrow Height)
-
-        // Cycle 2 (9 sliders) - rotated to fix the circular permutation
-        1: 4,     // 'Face Ratio' -> T40 (was controlling Mouth-Nose Dist, now controls Face Ratio)
-        21: 25,   // 'Mouth-Nose Distance' -> T250 (was controlling Jaw Width, now controls Mouth-Nose Dist)
-        23: 24,   // 'Jaw Width' -> T240 (was controlling Nose Shape, now controls Jaw Width)
-        15: 27,   // 'Nose Shape' -> T270 (was controlling Chin Shape, now controls Nose Shape)
-        25: 26,   // 'Chin Shape' -> T260 (was controlling Chin Forward, now controls Chin Shape)
-        24: 1,    // 'Chin Forward' -> T10 (was controlling Chin Size, now controls Chin Forward)
-        26: 2,    // 'Chin Size' -> T20 (was controlling Jaw Position, now controls Chin Size)
-        22: 21,   // 'Jaw Position' -> T210 (was controlling Eyebrow Shape, now controls Jaw Position)
-        4: 18     // 'Eyebrow Shape' -> T180 (was controlling Face Ratio, now controls Eyebrow Shape)
+        0: 19,    // 'Face Width' -> T190
+        1: 4,     // 'Face Ratio' -> T40
+        2: 3,     // 'Face Depth' -> T30
+        3: 23,    // 'Temple Width' -> T230
+        4: 18,    // 'Eyebrow Shape' -> T180
+        5: 22,    // 'Eyebrow Depth' -> T220
+        6: 17,    // 'Eyebrow Height' -> T170
+        7: 16,    // 'Eyebrow Position' -> T160
+        8: 14,    // 'Eyelids' -> T140
+        9: 13,    // 'Eye Depth' -> T130
+        10: 12,   // 'Eye Shape' -> T120
+        11: 11,   // 'Eye to Eye Dist' -> T110
+        12: 15,   // 'Eye Width' -> T150
+        13: 10,   // 'Cheek Bones' -> T100
+        14: 9,    // 'Nose Bridge' -> T90
+        15: 27,   // 'Nose Shape' -> T270
+        16: 8,    // 'Nose Size' -> T80
+        17: 7,    // 'Nose Width' -> T70
+        18: 6,    // 'Nose Height' -> T60
+        19: 5,    // 'Cheeks' -> T50
+        20: 20,   // 'Mouth Width' -> T200
+        21: 25,   // 'Mouth-Nose Distance' -> T250
+        22: 21,   // 'Jaw Position' -> T210
+        23: 24,   // 'Jaw Width' -> T240
+        24: 1,    // 'Chin Forward' -> T10
+        25: 26,   // 'Chin Shape' -> T260
+        26: 2     // 'Chin Size' -> T20
     };
 
-    // Legacy mapping for face code parsing (morph key based)
+    // CORRECT mapping based on skins.txt order
+    // The order in skins.txt determines morph key indices:
+    // First face key in skins.txt = morph_key_00, second = morph_key_01, etc.
     static sliderToMorphKeyMapping = {
         26: 0,    // 'Chin Size' -> morph_key_00
-        22: 1,    // 'Jaw Position' -> morph_key_01
-        20: 2,    // 'Mouth Width' -> morph_key_02
-        21: 3,    // 'Mouth-Nose Distance' -> morph_key_03
-        19: 4,    // 'Cheeks' -> morph_key_04
-        18: 5,    // 'Nose Height' -> morph_key_05
-        17: 6,    // 'Nose Width' -> morph_key_06
-        16: 7,    // 'Nose Size' -> morph_key_07
-        14: 26,   // 'Nose Bridge' -> morph_key_26 (SWAPPED: was 8, now gets 7)
-        13: 25,   // 'Cheek Bones' -> morph_key_25 (SWAPPED: was 9, now gets 7)
-        11: 24,   // 'Eye to Eye Dist' -> morph_key_24 (SWAPPED: was 10, now gets 7)
-        10: 23,   // 'Eye Shape' -> morph_key_23 (SWAPPED: was 11, now gets 7)
-        9: 12,    // 'Eye Depth' -> morph_key_12
-        8: 13,    // 'Eyelids' -> morph_key_13
+        25: 1,    // 'Chin Shape' -> morph_key_01
+        24: 2,    // 'Chin Forward' -> morph_key_02
+        23: 3,    // 'Jaw Width' -> morph_key_03
+        22: 4,    // 'Jaw Position' -> morph_key_04
+        21: 5,    // 'Mouth-Nose Distance' -> morph_key_05
+        20: 6,    // 'Mouth Width' -> morph_key_06
+        19: 7,    // 'Cheeks' -> morph_key_07
+        18: 8,    // 'Nose Height' -> morph_key_08
+        17: 9,    // 'Nose Width' -> morph_key_09
+        16: 10,   // 'Nose Size' -> morph_key_10
+        15: 11,   // 'Nose Shape' -> morph_key_11
+        14: 12,   // 'Nose Bridge' -> morph_key_12
+        13: 13,   // 'Cheek Bones' -> morph_key_13
         12: 14,   // 'Eye Width' -> morph_key_14
-        7: 15,    // 'Eyebrow Position' -> morph_key_15
-        
-        // Unmapped sliders
-        0: 16,    // 'Face Width' -> morph_key_16
-        1: 17,    // 'Face Ratio' -> morph_key_17
-        2: 18,    // 'Face Depth' -> morph_key_18
-        3: 19,    // 'Temple Width' -> morph_key_19
-        4: 20,    // 'Eyebrow Shape' -> morph_key_20
+        11: 15,   // 'Eye to Eye Dist' -> morph_key_15
+        10: 16,   // 'Eye Shape' -> morph_key_16
+        9: 17,    // 'Eye Depth' -> morph_key_17
+        8: 18,    // 'Eyelids' -> morph_key_18
+        7: 19,    // 'Eyebrow Position' -> morph_key_19
+        6: 20,    // 'Eyebrow Height' -> morph_key_20
         5: 21,    // 'Eyebrow Depth' -> morph_key_21
-        6: 22,    // 'Eyebrow Height' -> morph_key_22
-        15: 11,   // 'Nose Shape' -> morph_key_11 (SWAPPED: was 23, now gets 0)
-        23: 10,   // 'Jaw Width' -> morph_key_10 (SWAPPED: was 24, now gets 0)
-        24: 9,    // 'Chin Forward' -> morph_key_09 (SWAPPED: was 25, now gets 0)
-        25: 8     // 'Chin Shape' -> morph_key_08 (SWAPPED: was 26, now gets 0)
+        4: 22,    // 'Eyebrow Shape' -> morph_key_22
+        3: 23,    // 'Temple Width' -> morph_key_23
+        2: 24,    // 'Face Depth' -> morph_key_24
+        1: 25,    // 'Face Ratio' -> morph_key_25
+        0: 26     // 'Face Width' -> morph_key_26
+        // Note: morph_key_27 is Post-Edit (usually hidden)
+        // morphs 28-42 are additional morphs not exposed in our UI
     };
 
     // Reverse mapping from morph key to slider index
