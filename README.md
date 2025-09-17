@@ -55,3 +55,7 @@ mb-app --delete 2
 # Use WSE2 profiles directory
 mb-app --wse2 --backup wse2_backup
 ```
+
+## Web Face Editor
+
+![Demo](M&B Face Editor MVP.gif)
