@@ -56,6 +56,6 @@ mb-app --delete 2
 mb-app --wse2 --backup wse2_backup
 ```
 
-## Web Face Editor
+## Web Face Editor (work in progress)
 
-![Demo](M&B Face Editor MVP.gif)
+![Demo](https://github.com/doppelmarker/mb_appearance/blob/main/M%26B%20Face%20Editor%20MVP.gif)
